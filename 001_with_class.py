@@ -126,6 +126,14 @@ from integrator import BorisIntegrator
 
 wig = BorisIntegrator(fieldmap=mywig, s_cut=s_cut, dt=dt, n_steps_max=n_steps)
 
+
+s_test = np.linspace(0, 2.4, 1000)
+Bx_test = 0 * s_test
+By_test = 0 * s_test
+Bs_test = 0 * s_test
+print("extracting field...")
+
+
 env = xt.Environment()
 env.elements['wiggler'] = wig
 
@@ -145,9 +153,9 @@ line.twiss_default['include_collective'] = True
 
 tw = line.twiss(betx=10, bety=10)
 
-opt = line.match(
-    solve=False,
-    betx=1, bety=1,
-    targets=[xt.TargetSet(x=0, px=0, at='exit')],
-    vary=[
-        xt.VaryList(['k0l_corr1', 'k0l_corr2'], step=1e-6)])
+# opt = line.match(
+#     solve=False,
+#     betx=1, bety=1,
+#     targets=[xt.TargetSet(x=0, px=0, at='exit')],
+#     vary=[
+#         xt.VaryList(['k0l_corr1', 'k0l_corr2'], step=1e-6)])
