@@ -99,20 +99,6 @@ class MyWiggler:
 
 mywig = MyWiggler(Bxfun, Byfun, Bsfun, s0=-1.2)
 
-# Field on axis
-# s_test = np.linspace(0, 2.4, 1000)
-# Bx_test = 0 * s_test
-# By_test = 0 * s_test
-# Bs_test = 0 * s_test
-
-# print("extracting field...")
-# for i, s in enumerate(s_test):
-#     if i % 10 == 0:
-#         print(f"{i}/{len(s_test)}", end='\r', flush=True)
-#     Bx_test[i], By_test[i], Bs_test[i] = mywig.get_field(0, 0, s)
-
-# int_By = cumulative_trapezoid(By_test, s_test)
-
 p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
                   energy0=2.4e9)
 
@@ -126,13 +112,16 @@ from integrator import BorisIntegrator
 
 wig = BorisIntegrator(fieldmap=mywig, s_cut=s_cut, dt=dt, n_steps_max=n_steps)
 
-
+# Field on axis
 s_test = np.linspace(0, 2.4, 1000)
-Bx_test = 0 * s_test
-By_test = 0 * s_test
-Bs_test = 0 * s_test
-print("extracting field...")
-
+Bx_init, By_init, Bz_init = wig.get_field(0 * s_test, 0 * s_test, s_test)
+integral_By_init = cumulative_trapezoid(By_init, s_test)
+integral_Bx_init = cumulative_trapezoid(Bx_init, s_test)
+wig.By0 = -integral_By_init [-1] / s_cut
+wig.Bx0 = -integral_Bx_init [-1] / s_cut
+Bx, By, Bz = wig.get_field(0 * s_test, 0 * s_test, s_test)
+integral_By = cumulative_trapezoid(By, s_test)
+integral_Bx = cumulative_trapezoid(Bx, s_test)
 
 env = xt.Environment()
 env.elements['wiggler'] = wig
