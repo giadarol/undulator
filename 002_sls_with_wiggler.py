@@ -104,7 +104,7 @@ p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
 
 p = p0.copy()
 
-dt = 1e-11
+dt = 2e-11
 n_steps = 1500
 s_cut = 2.4
 
@@ -128,9 +128,30 @@ line = env.ring
 line.particle_ref = p0.copy()
 
 env.elements['wiggler'] = wig
+env['k0l_corr1'] = 0.
+env['k0l_corr2'] = 0.
+env['k0sl_corr1'] = 0.
+env['k0sl_corr2'] = 0.
 line.insert('wiggler', anchor='center', at=223.8)
-
+line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'],
+                    at=-0.1, from_='wiggler@start'),
+                env.new('corr2', xt.Multipole, knl=['k0l_corr2'], ksl=['k0sl_corr2'],
+                    at=0.1, from_='wiggler@end'),
+                env.new('mark', xt.Marker, at=0.2, from_='wiggler@end')
+                ])
+line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
+
+opt = line.match(
+    solve=False,
+    init=tw_no_wig.get_twiss_init(0),
+    only_orbit=True,
+    include_collective=True,
+    vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2'], step=1e-6),
+    targets=xt.TargetSet(x=0, px=0, y=0, py=0., at='mark')
+)
+
+opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))

@@ -85,7 +85,7 @@ class BorisIntegrator:
 
         for ii in range(n_steps):
 
-            print(f"{ii}/{n_steps}", end='\r', flush=True)
+            print(f"{ii}/{n_steps}     ", end='\r', flush=True)
 
             mask_inside = (p.s < s_cut) | (p.s < -1e-10)
             if not np.any(mask_inside):
