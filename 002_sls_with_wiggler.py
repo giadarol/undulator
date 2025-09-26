@@ -105,47 +105,32 @@ p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
 p = p0.copy()
 
 dt = 1e-11
-n_steps = 150
+n_steps = 1500
 s_cut = 2.4
 
 from integrator import BorisIntegrator
 
 wig = BorisIntegrator(fieldmap=mywig, s_cut=s_cut, dt=dt, n_steps_max=n_steps)
 
-# Field on axis
-s_test = np.linspace(0, 2.4, 1000)
-Bx_init, By_init, Bz_init = wig.get_field(0 * s_test, 0 * s_test, s_test)
-integral_By_init = cumulative_trapezoid(By_init, s_test)
-integral_Bx_init = cumulative_trapezoid(Bx_init, s_test)
-wig.By0 = -integral_By_init [-1] / s_cut
-wig.Bx0 = -integral_Bx_init [-1] / s_cut
-Bx, By, Bz = wig.get_field(0 * s_test, 0 * s_test, s_test)
-integral_By = cumulative_trapezoid(By, s_test)
-integral_Bx = cumulative_trapezoid(Bx, s_test)
+# # Field on axis
+# s_test = np.linspace(0, 2.4, 1000)
+# Bx_init, By_init, Bz_init = wig.get_field(0 * s_test, 0 * s_test, s_test)
+# integral_By_init = cumulative_trapezoid(By_init, s_test)
+# integral_Bx_init = cumulative_trapezoid(Bx_init, s_test)
+# wig.By0 = -integral_By_init [-1] / s_cut
+# wig.Bx0 = -integral_Bx_init [-1] / s_cut
+# Bx, By, Bz = wig.get_field(0 * s_test, 0 * s_test, s_test)
+# integral_By = cumulative_trapezoid(By, s_test)
+# integral_Bx = cumulative_trapezoid(Bx, s_test)
 
-env = xt.Environment()
-env.elements['wiggler'] = wig
-
-env['k0l_corr1'] = 0.
-env['k0l_corr2'] = 0.
-env['k0sl_corr1'] = 0.
-env['k0sl_corr2'] = 0.
-
-line = env.new_line(components=[
-    env.new('corr1', 'Multipole', knl=['k0l_corr1'], ksl=['k0sl_corr1'], at=0.1),
-    env.new('corr2', 'Multipole', knl=['k0l_corr2'], ksl=['k0sl_corr2'], at=0.2),
-    env.place('wiggler', anchor='start', at=0.3),
-    env.new('exit', 'Marker', at=3)
-])
+env = xt.load('b075_2024.09.25.madx')
+line = env.ring
 line.particle_ref = p0.copy()
-line.twiss_default['include_collective'] = True
 
-tw = line.twiss(betx=10, bety=10)
+env.elements['wiggler'] = wig
+line.insert('wiggler', anchor='center', at=223.8)
 
+tw_no_wig = line.twiss4d()
 
-# opt = line.match(
-#     solve=False,
-#     betx=1, bety=1,
-#     targets=[xt.TargetSet(x=0, px=0, at='exit')],
-#     vary=[
-#         xt.VaryList(['k0l_corr1', 'k0l_corr2'], step=1e-6)])
+# tw_wig = line.twiss4d(include_collective=True)
+tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
