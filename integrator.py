@@ -175,8 +175,9 @@ class BorisIntegrator:
         self.beta_y_log = beta_y_log
         self.beta_z_log = beta_z_log
 
-        # Backtrac to the cut
+        # Backtrack to the cut
         ds = p.s - self.s_cut
+        self.log_ds = ds.copy()
         pz = np.sqrt((p.p0c*(1 + p.delta))**2 - p.px**2 - p.py**2)
         p.s = s_start + s_cut
         p.x -= p.px / pz * ds

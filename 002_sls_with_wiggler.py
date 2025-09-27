@@ -105,7 +105,7 @@ p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
 p = p0.copy()
 
 dt = 2e-11
-n_steps = 1500
+n_steps = 15000
 s_cut = 2.4
 
 from integrator import BorisIntegrator
@@ -142,16 +142,46 @@ line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'
 line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
 
-opt = line.match(
-    solve=False,
-    init=tw_no_wig.get_twiss_init(0),
-    only_orbit=True,
-    include_collective=True,
-    vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2'], step=1e-6),
-    targets=xt.TargetSet(x=0, px=0, y=0, py=0., at='mark')
-)
+# Kicks to be used without integral compensation
+line.vars.update(
+    {'k0l_corr1': np.float64(0.00018437989300043418),
+ 'k0l_corr2': np.float64(-0.00030407697593956784),
+ 'k0sl_corr1': np.float64(2.666590031193365e-05),
+ 'k0sl_corr2': np.float64(0.0003757152542126345)})
 
-opt.step(2)
+# opt = line.match(
+#     solve=False,
+#     init=tw_no_wig.get_twiss_init(0),
+#     only_orbit=True,
+#     include_collective=True,
+#     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2'], step=1e-6),
+#     targets=xt.TargetSet(x=0, px=0, y=0, py=0., at='mark')
+# )
+
+# opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
+
+p_co = tw_wig_open.particle_on_co.copy()
+p_co.at_element=0
+tw = line.twiss4d(include_collective=True, particle_on_co=p_co,
+                  compute_chromatic_properties=False)
+
+delta_chrom = 1e-4
+p_co_plus = p_co.copy()
+p_co_plus.delta += delta_chrom
+p_co_plus.x += tw.dx[0] * delta_chrom
+p_co_plus.px += tw.dpx[0] * delta_chrom
+p_co_plus.y += tw.dy[0] * delta_chrom
+p_co_plus.py += tw.dpy[0] * delta_chrom
+p_co_plus.at_element=0
+tw_plus = line.twiss4d(include_collective=True,
+                       particle_on_co=p_co_plus,
+                       compute_chromatic_properties=False)
+
+# p_co_minus = p_co_plus.copy()
+# p_co_minus.delta -= 2 * delta_chrom
+# tw_minus = line.twiss4d(include_collective=True,
+#                         particle_on_co=p_co_minus,
+#                         compute_chromatic_properties=False)
