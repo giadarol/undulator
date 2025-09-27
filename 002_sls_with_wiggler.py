@@ -104,7 +104,7 @@ p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
 
 p = p0.copy()
 
-dt = 2e-11
+dt = 0.2e-11
 n_steps = 15000
 s_cut = 2.4
 
@@ -142,13 +142,21 @@ line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'
 line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
 
-# Kicks to be used without integral compensation
-line.vars.update(
-    {'k0l_corr1': np.float64(0.00018437989300043418),
- 'k0l_corr2': np.float64(-0.00030407697593956784),
- 'k0sl_corr1': np.float64(2.666590031193365e-05),
- 'k0sl_corr2': np.float64(0.0003757152542126345)})
+# # Kicks to be used without integral compensation and dt=2e-11
+# line.vars.update(
+#     {'k0l_corr1': np.float64(0.00018437989300043418),
+#  'k0l_corr2': np.float64(-0.00030407697593956784),
+#  'k0sl_corr1': np.float64(2.666590031193365e-05),
+#  'k0sl_corr2': np.float64(0.0003757152542126345)})
 
+# # Kicks to be used without integral compensation and dt=0.5e-11
+line.vars.update(
+{'k0l_corr1': np.float64(0.00018887390895860494),
+ 'k0l_corr2': np.float64(-0.00032214712121279116),
+ 'k0sl_corr1': np.float64(2.7222520737453678e-05),
+ 'k0sl_corr2': np.float64(0.00033011061736262727)})
+
+# # To compute the kicks
 # opt = line.match(
 #     solve=False,
 #     init=tw_no_wig.get_twiss_init(0),
@@ -157,7 +165,6 @@ line.vars.update(
 #     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2'], step=1e-6),
 #     targets=xt.TargetSet(x=0, px=0, y=0, py=0., at='mark')
 # )
-
 # opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
