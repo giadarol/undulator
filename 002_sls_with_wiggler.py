@@ -112,7 +112,7 @@ from integrator import BorisIntegrator
 
 wig = BorisIntegrator(fieldmap=mywig, s_cut=s_cut, dt=dt, n_steps_max=n_steps)
 
-# # Field on axis
+# Field on axis
 # s_test = np.linspace(0, 2.4, 1000)
 # Bx_init, By_init, Bz_init = wig.get_field(0 * s_test, 0 * s_test, s_test)
 # integral_By_init = cumulative_trapezoid(By_init, s_test)
@@ -180,8 +180,26 @@ tw_plus = line.twiss4d(include_collective=True,
                        particle_on_co=p_co_plus,
                        compute_chromatic_properties=False)
 
-# p_co_minus = p_co_plus.copy()
-# p_co_minus.delta -= 2 * delta_chrom
-# tw_minus = line.twiss4d(include_collective=True,
-#                         particle_on_co=p_co_minus,
-#                         compute_chromatic_properties=False)
+p_co_minus = p_co_plus.copy()
+p_co_minus.delta -= delta_chrom
+p_co_minus.x -= tw.dx[0] * delta_chrom
+p_co_minus.px -= tw.dpx[0] * delta_chrom
+p_co_minus.y -= tw.dy[0] * delta_chrom
+p_co_minus.py -= tw.dpy[0] * delta_chrom
+p_co_minus.at_element=0
+tw_minus = line.twiss4d(include_collective=True,
+                        particle_on_co=p_co_minus,
+                        compute_chromatic_properties=False)
+
+cols_chrom, scalars_chrom = xt.twiss._compute_chromatic_functions(line, init=None,
+                                      delta_chrom=delta_chrom,
+                                      steps_r_matrix=None,
+                                      matrix_responsiveness_tol=None,
+                                      matrix_stability_tol=None,
+                                      symplectify=None,
+                                      tw_chrom_res=[tw_minus, tw_plus],
+                                      on_momentum_twiss_res=tw)
+
+tw._data.update(cols_chrom)
+tw._data.update(scalars_chrom)
+tw._col_names += list(cols_chrom.keys())
