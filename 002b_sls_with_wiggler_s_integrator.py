@@ -109,7 +109,7 @@ s_cut = 2.4
 
 from integrator_ds import BorisSpatialIntegrator
 
-wig = BorisSpatialIntegrator(fieldmap=mywig, s_cut=s_cut, n_steps=n_steps)
+wig = BorisSpatialIntegrator(fieldmap=mywig, s_start=0, s_end=s_cut, n_steps=n_steps)
 
 # Field on axis
 # s_test = np.linspace(0, 2.4, 1000)

@@ -9,14 +9,15 @@ class BorisSpatialIntegrator:
 
     isthick = True
 
-    def __init__(self, fieldmap, s_cut, n_steps,
+    def __init__(self, fieldmap, s_start, s_end, n_steps,
                  Bx0=0, By0=0):
         self.fieldmap = fieldmap
-        self.s_cut = s_cut
-        self.ds = s_cut / n_steps
+        self.s_start = s_start
+        self.s_end = s_end
+        self.ds = (s_end - s_start) / n_steps
         self.n_steps = n_steps
         self.ctx = None
-        self.length = s_cut
+        self.length = s_end - s_start
         self.Bx0 = Bx0
         self.By0 = By0
 
@@ -31,8 +32,8 @@ class BorisSpatialIntegrator:
         x_log = []
         y_log = []
         z_log = []
-        s_start = p.s.copy()
-        p.s=0
+        s_in = p.s.copy()
+        p.s=self.s_start
 
         for ii in range(self.n_steps):
 
@@ -76,7 +77,7 @@ class BorisSpatialIntegrator:
             x_log.append(p.x.copy())
             y_log.append(p.y.copy())
             z_log.append(p.s.copy())
-        p.s += s_start
+        p.s = s_in + self.length
         self.x_log = np.array(x_log)
         self.y_log = np.array(y_log)
         self.z_log = np.array(z_log)
