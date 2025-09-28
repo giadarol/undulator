@@ -161,19 +161,16 @@ line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'
 line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
 
-# Kicks to be used without integral compensation and n_steps=500
-# line.vars.update(
-# {'k0l_corr1': np.float64(0.00018974542686277379),
-#  'k0l_corr2': np.float64(-0.00031876421147841136),
-#  'k0sl_corr1': np.float64(2.3978014875526436e-05),
-#  'k0sl_corr2': np.float64(0.000311552319146383)})
-
 # # Kicks to be used without integral compensation and n_steps=2000
 # line.vars.update(
-# {'k0l_corr1': np.float64(0.0001887415501030932),
-#  'k0l_corr2': np.float64(-0.00032155672692134394),
-#  'k0sl_corr1': np.float64(2.4757237666615697e-05),
-#  'k0sl_corr2': np.float64(0.000309933033812378)})
+# {'k0l_corr1': np.float64(0.0013375722909499802),
+#  'k0l_corr2': np.float64(-0.0015477033069443826),
+#  'k0sl_corr1': np.float64(0.00033674673725582043),
+#  'k0sl_corr2': np.float64(0.0002409808465815061),
+#  'k0l_corr3': np.float64(-0.0010644539557796784),
+#  'k0sl_corr3': np.float64(-0.00029820284327848016),
+#  'k0l_corr4': np.float64(0.0011414467498490441),
+#  'k0sl_corr4': np.float64(5.534116174575418e-05)})
 
 # To compute the kicks
 opt = line.match(
