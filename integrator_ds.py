@@ -37,8 +37,7 @@ class BorisSpatialIntegrator:
 
         for ii in range(self.n_steps):
 
-            if ii % 10 == 0:
-                print(f"Step {ii}/{self.n_steps}           ", end='\r', flush=True)
+            print(f's = {p.s[0]:.3f}           ', end='\r', flush=True)
 
             q0 = p.q0
             x = p.x.copy()

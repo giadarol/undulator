@@ -104,12 +104,19 @@ p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
 
 p = p0.copy()
 
-n_steps = 500
-s_cut = 2.4
+n_steps = 2000
+l_wig = 2.4
+n_slices = 500
 
 from integrator_ds import BorisSpatialIntegrator
 
-wig = BorisSpatialIntegrator(fieldmap=mywig, s_start=0, s_end=s_cut, n_steps=n_steps)
+s_cuts = np.linspace(0, l_wig, n_slices + 1)
+
+wig_slices = []
+for ii in range(n_slices):
+    wig = BorisSpatialIntegrator(fieldmap=mywig, s_start=s_cuts[ii], s_end=s_cuts[ii + 1],
+                                 n_steps=np.round(n_steps / n_slices).astype(int))
+    wig_slices.append(wig)
 
 # Field on axis
 # s_test = np.linspace(0, 2.4, 1000)
@@ -126,36 +133,42 @@ env = xt.load('b075_2024.09.25.madx')
 line = env.ring
 line.particle_ref = p0.copy()
 
-env.elements['wiggler'] = wig
+
 env['k0l_corr1'] = 0.
 env['k0l_corr2'] = 0.
 env['k0sl_corr1'] = 0.
 env['k0sl_corr2'] = 0.
-line.insert('wiggler', anchor='center', at=223.8)
+
+for ii in range(n_slices):
+    env.elements[f'wiggler_{ii}'] = wig_slices[ii]
+wiggler = env.new_line(components=['wiggler_' + str(ii) for ii in range(n_slices)])
+
+line.insert(wiggler, anchor='center', at=223.8)
 line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'],
-                    at=-0.1, from_='wiggler@start'),
+                    at=-0.1, from_='wiggler_0@start'),
                 env.new('corr2', xt.Multipole, knl=['k0l_corr2'], ksl=['k0sl_corr2'],
-                    at=0.1, from_='wiggler@end'),
-                env.new('mark', xt.Marker, at=0.2, from_='wiggler@end')
+                    at=0.1 + l_wig, from_='wiggler_0@start'),
+                env.new('mark', xt.Marker, at=0.2 + l_wig, from_='wiggler_0@start')
                 ])
 line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
 
 # Kicks to be used without integral compensation and n_steps=500
-line.vars.update(
-{'k0l_corr1': np.float64(0.00018974542686277379),
- 'k0l_corr2': np.float64(-0.00031876421147841136),
- 'k0sl_corr1': np.float64(2.3978014875526436e-05),
- 'k0sl_corr2': np.float64(0.000311552319146383)})
-
-# # Kicks to be used without integral compensation and dt=0.5e-11
 # line.vars.update(
-# {'k0l_corr1': np.float64(0.00018887390895860494),
-#  'k0l_corr2': np.float64(-0.00032214712121279116),
-#  'k0sl_corr1': np.float64(2.7222520737453678e-05),
-#  'k0sl_corr2': np.float64(0.00033011061736262727)})
+# {'k0l_corr1': np.float64(0.00018974542686277379),
+#  'k0l_corr2': np.float64(-0.00031876421147841136),
+#  'k0sl_corr1': np.float64(2.3978014875526436e-05),
+#  'k0sl_corr2': np.float64(0.000311552319146383)})
 
-# To compute the kicks
+# # Kicks to be used without integral compensation and n_steps=2000
+line.vars.update(
+{'k0l_corr1': np.float64(0.0001887415501030932),
+ 'k0l_corr2': np.float64(-0.00032155672692134394),
+ 'k0sl_corr1': np.float64(2.4757237666615697e-05),
+ 'k0sl_corr2': np.float64(0.000309933033812378)})
+
+# # To compute the kicks
+# wig.n_steps = 10 # no need for accuracty when initializing the optimizer
 # opt = line.match(
 #     solve=False,
 #     init=tw_no_wig.get_twiss_init(0),
@@ -164,10 +177,13 @@ line.vars.update(
 #     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2'], step=1e-6),
 #     targets=xt.TargetSet(x=0, px=0, y=0, py=0., at='mark')
 # )
+# wig.n_steps = n_steps # Back to accurate value
 # opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
+
+prrrr
 
 p_co = tw_wig_open.particle_on_co.copy()
 p_co.at_element=0
