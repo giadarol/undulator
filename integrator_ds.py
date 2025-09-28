@@ -56,17 +56,15 @@ class BorisSpatialIntegrator:
 
             Px_J = px * p0_J
             Py_J = py * p0_J
-            Pz_J = np.sqrt((p0_J * (1 + delta))**2 - Px_J**2 - Py_J**2)
 
             w = np.zeros((Px_J.shape[0], 3), dtype=Px_J.dtype)
             w[:, 0] = Px_J
             w[:, 1] = Py_J
             w[:, 2] = energy_J / clight  # E/c
 
-            x_new, y_new, z_new, w_new = step_spatial_boris(
-                x, y, z, w, Pz_J, charge0_coulomb, self.ds,
+            x_new, y_new, z_new, w_new = step_spatial_boris_B(x, y, z, w,
+                charge0_coulomb, self.ds,
                 field_fn=self.get_field)
-
             p.x = x_new.copy()
             p.y = y_new.copy()
             p.s = z_new.copy()
@@ -84,53 +82,71 @@ class BorisSpatialIntegrator:
 import numpy as np
 c = 299_792_458.0  # m/s
 
-def step_spatial_boris(x, y, z, w, pz, q, dz, field_fn):
+def step_spatial_boris_B(x, y, z, w, q, dz, field_fn):
     """
-    One Δz step with E≡0 using the spatial-Boris scheme.
-    - State: x,y,z (N,), w=(px,py,U/c) (N,3), pz (N,) constant (since Ez=0).
-    - field_fn(x,y,z) must return (Ex,Ey,Ez,Bx,By,Bz); we ignore E components.
-    """
-    x = np.asarray(x); y = np.asarray(y); z = np.asarray(z)
-    w = np.asarray(w); pz = np.asarray(pz)
+    Spatial Boris step for magnetic fields only (E = 0),
+    computing pz from total energy U and transverse momenta.
 
-    # Half drift: ds/dz = w/pz  (only px,py enter)
-    xh = x + (w[:, 0] / pz) * (dz * 0.5)
-    yh = y + (w[:, 1] / pz) * (dz * 0.5)
+    Parameters
+    ----------
+    x, y, z : (N,) arrays
+        Particle positions [m]
+    w : (N, 3) array
+        (px, py, U/c)
+    q : float
+        Particle charge [C]
+    dz : float
+        Step in z [m]
+    field_fn : callable(x, y, z) -> (Bx, By, Bz)
+        Magnetic field function [T]
+    m : float
+        Particle rest mass [kg]
+    """
+
+    # --- Unpack
+    px, py, Uc = w[:, 0], w[:, 1], w[:, 2]
+    U = Uc * c  # total energy in J
+
+    # --- Compute longitudinal momentum pz from energy–momentum relation
+    pz = np.sqrt((U / c)**2 - px**2 - py**2)
+
+    # --- Half drift of positions
+    xh = x + (px / pz) * (dz * 0.5)
+    yh = y + (py / pz) * (dz * 0.5)
     zh = z + dz * 0.5
 
-    # Fields at midpoint (E components ignored / assumed zero)
+    # --- Fields at midpoint
     Bx, By, Bz = field_fn(xh, yh, zh)
 
-    # Magnetic half-kick from transverse B: b = q(-By, +Bx, 0)
-    bx = -q * By
-    by =  q * Bx
-    # bz = 0 since E=0 ⇒ U/c unchanged during the “kick”
-    wmx = w[:, 0] + 0.5 * dz * bx
-    wmy = w[:, 1] + 0.5 * dz * by
-    wmz = w[:, 2]                     # unchanged by the kick
+    # --- First half-kick from Bx, By
+    pxm = px - 0.5 * q * dz * By
+    pym = py + 0.5 * q * dz * Bx
 
-    # Exact rotation in (px,py) due to Bz over Δz (no division by Bz):
-    # t = tan(theta/2) with theta = 2*atan(delta/2), delta = q Bz dz / pz
-    t = 0.5 * (q * Bz * dz / pz)
-    denom = 1.0 + t*t
-    s = 2.0 * t / denom               # sin(theta)
-    c0 = (1.0 - t*t) / denom          # cos(theta)
+    # --- Recompute pz at mid-step (since px,py changed)
+    pz = np.sqrt((U / c)**2 - pxm**2 - pym**2)
 
-    # Rotate (wmx, wmy) -> (wpx, wpy); wmz (U/c) unaffected by pure rotation
-    wpx = c0 * wmx + s * wmy
-    wpy = c0 * wmy - s * wmx
-    wpz = wmz
+    # --- Rotation due to Bz
+    t = 0.5 * q * Bz * dz / pz
+    t2 = t * t
+    s = 2 * t / (1 + t2)
+    c0 = (1 - t2) / (1 + t2)
 
-    # Second magnetic half-kick
-    w1x = wpx + 0.5 * dz * bx
-    w1y = wpy + 0.5 * dz * by
-    w1z = wpz
+    pxp = c0 * pxm - s * pym
+    pyp = s * pxm + c0 * pym
+    up  = Uc  # unchanged (E=0)
 
-    w1 = np.stack([w1x, w1y, w1z], axis=1)
+    # --- Second half-kick from Bx, By
+    px1 = pxp - 0.5 * q * dz * By
+    py1 = pyp + 0.5 * q * dz * Bx
 
-    # Second half drift with updated slopes
-    x1 = xh + (w1[:, 0] / pz) * (dz * 0.5)
-    y1 = yh + (w1[:, 1] / pz) * (dz * 0.5)
+    # --- Recompute pz again (for next step)
+    pz1 = np.sqrt((U / c)**2 - px1**2 - py1**2)
+
+    # --- Second half drift
+    x1 = xh + (px1 / pz1) * (dz * 0.5)
+    y1 = yh + (py1 / pz1) * (dz * 0.5)
     z1 = z + dz
 
+    # --- Output
+    w1 = np.stack([px1, py1, up], axis=1)
     return x1, y1, z1, w1

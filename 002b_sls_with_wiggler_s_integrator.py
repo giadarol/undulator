@@ -161,31 +161,31 @@ line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'
 line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
 
-# # Kicks to be used without integral compensation and n_steps=2000
-# line.vars.update(
-# {'k0l_corr1': np.float64(0.0013375722909499802),
-#  'k0l_corr2': np.float64(-0.0015477033069443826),
-#  'k0sl_corr1': np.float64(0.00033674673725582043),
-#  'k0sl_corr2': np.float64(0.0002409808465815061),
-#  'k0l_corr3': np.float64(-0.0010644539557796784),
-#  'k0sl_corr3': np.float64(-0.00029820284327848016),
-#  'k0l_corr4': np.float64(0.0011414467498490441),
-#  'k0sl_corr4': np.float64(5.534116174575418e-05)})
+# Kicks to be used without integral compensation and n_steps=2000
+line.vars.update(
+{'k0l_corr1': np.float64(0.0013375722909499802),
+ 'k0l_corr2': np.float64(-0.0015477033069443826),
+ 'k0sl_corr1': np.float64(0.00033674673725582043),
+ 'k0sl_corr2': np.float64(0.0002409808465815061),
+ 'k0l_corr3': np.float64(-0.0010644539557796784),
+ 'k0sl_corr3': np.float64(-0.00029820284327848016),
+ 'k0l_corr4': np.float64(0.0011414467498490441),
+ 'k0sl_corr4': np.float64(5.534116174575418e-05)})
 
-# To compute the kicks
-opt = line.match(
-    solve=False,
-    init=tw_no_wig.get_twiss_init(0),
-    only_orbit=True,
-    include_collective=True,
-    vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
-                      'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'], step=1e-6),
-    targets=[
-        xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
-        xt.TargetSet(x=0, y=0, at='wiggler_167'),
-        xt.TargetSet(x=0, y=0, at='wiggler_833')],
-)
-opt.step(2)
+# # To compute the kicks
+# opt = line.match(
+#     solve=False,
+#     init=tw_no_wig.get_twiss_init(0),
+#     only_orbit=True,
+#     include_collective=True,
+#     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
+#                       'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'], step=1e-6),
+#     targets=[
+#         xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
+#         xt.TargetSet(x=0, y=0, at='wiggler_167'),
+#         xt.TargetSet(x=0, y=0, at='wiggler_833')],
+# )
+# opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
