@@ -149,13 +149,13 @@ wiggler = env.new_line(components=['wiggler_' + str(ii) for ii in range(n_slices
 
 line.insert(wiggler, anchor='center', at=223.8)
 line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'],
-                    at=-0.1, from_='wiggler_0@start'),
+                    at=-0.01, from_='wiggler_0@start'),
                 env.new('corr2', xt.Multipole, knl=['k0l_corr2'], ksl=['k0sl_corr2'],
-                    at=0.1 + l_wig, from_='wiggler_0@start'),
+                    at=0.01 + l_wig, from_='wiggler_0@start'),
                 env.new('corr3', xt.Multipole, knl=['k0l_corr3'], ksl=['k0sl_corr3'],
                     at=-0.2, from_='wiggler_0@start'),
                 env.new('corr4', xt.Multipole, knl=['k0l_corr4'], ksl=['k0sl_corr4'],
-                    at=0.2 + l_wig, from_='wiggler_0@start'),
+                    at=0.02 + l_wig, from_='wiggler_0@start'),
                 env.new('mark', xt.Marker, at=0.25 + l_wig, from_='wiggler_0@start')
                 ])
 line.configure_bend_model(core='mat-kick-mat')
@@ -163,14 +163,14 @@ tw_no_wig = line.twiss4d()
 
 # Kicks to be used without integral compensation and n_steps=2000
 line.vars.update(
-{'k0l_corr1': np.float64(0.0013375722909499802),
- 'k0l_corr2': np.float64(-0.0015477033069443826),
- 'k0sl_corr1': np.float64(0.00033674673725582043),
- 'k0sl_corr2': np.float64(0.0002409808465815061),
- 'k0l_corr3': np.float64(-0.0010644539557796784),
- 'k0sl_corr3': np.float64(-0.00029820284327848016),
- 'k0l_corr4': np.float64(0.0011414467498490441),
- 'k0sl_corr4': np.float64(5.534116174575418e-05)})
+{'k0l_corr1': np.float64(0.0007039909450695799),
+ 'k0l_corr2': np.float64(-0.008164474082472721),
+ 'k0sl_corr1': np.float64(0.00017719794038307854),
+ 'k0sl_corr2': np.float64(-0.0029243554446412904),
+ 'k0l_corr3': np.float64(-0.0004308706944159601),
+ 'k0sl_corr3': np.float64(-0.00013866666663981872),
+ 'k0l_corr4': np.float64(0.007758215805844963),
+ 'k0sl_corr4': np.float64(0.003220669295556179)})
 
 # # To compute the kicks
 # opt = line.match(
@@ -189,8 +189,6 @@ line.vars.update(
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
-
-prrrr
 
 p_co = tw_wig_open.particle_on_co.copy()
 p_co.at_element=0
