@@ -24,10 +24,7 @@ class BorisSpatialIntegrator:
         Bx, By, Bz = self.fieldmap.get_field(x, y, s)
         Bx += self.Bx0
         By += self.By0
-        Ex = 0 * Bx
-        Ey = 0 * By
-        Ez = 0 * Bz
-        return Ex, Ey, Ez, Bx, By, Bz
+        return Bx, By, Bz
 
     def track(self, p):
 
@@ -40,7 +37,7 @@ class BorisSpatialIntegrator:
         for ii in range(self.n_steps):
 
             if ii % 10 == 0:
-                print(f"Step {ii}/{self.n_steps}", end='\r', flush=True)
+                print(f"Step {ii}/{self.n_steps}           ", end='\r', flush=True)
 
             q0 = p.q0
             x = p.x.copy()
@@ -66,7 +63,7 @@ class BorisSpatialIntegrator:
             w[:, 1] = Py_J
             w[:, 2] = energy_J / clight  # E/c
 
-            x_new, y_new, z_new, w_new = step_spatial_boris_safe(
+            x_new, y_new, z_new, w_new = step_spatial_boris(
                 x, y, z, w, Pz_J, charge0_coulomb, self.ds,
                 field_fn=self.get_field)
 
@@ -87,119 +84,53 @@ class BorisSpatialIntegrator:
 import numpy as np
 c = 299_792_458.0  # m/s
 
-# ---------- helpers ----------
-def _build_R_full(Ex, Ey, Bz, pz, q, dz):
-    """R from Stoltz Eq. (22)–(27); requires |Bz| not too small."""
-    delta = q * Bz * dz / pz
-    Ex_over_Bc = Ex / (Bz * c)
-    Ey_over_Bc = Ey / (Bz * c)
-    Ex2_over_B2c2 = Ex_over_Bc**2
-    Ey2_over_B2c2 = Ey_over_Bc**2
-
-    b1 = 0.5 * delta * (Ex2_over_B2c2 - 1.0)
-    b2 = 0.5 * delta * (Ey2_over_B2c2 - 1.0)
-    b3 = 0.5 * delta * (Ex2_over_B2c2 + Ey2_over_B2c2)
-
-    half_delta = 0.5 * delta
-    den = 1.0 + (half_delta**2) * (1.0 - (Ex2_over_B2c2 + Ey2_over_B2c2))
-    alpha = (2.0 * half_delta) / den
-
-    ExEy_over_B2c2 = Ex_over_Bc * Ey_over_Bc
-    N = Ex.shape[0]
-    R = np.zeros((N, 3, 3), dtype=Ex.dtype)
-
-    R[:, 0, 0] = b1
-    R[:, 0, 1] = 1.0 + 0.5 * delta * ExEy_over_B2c2
-    R[:, 0, 2] = 0.5 * delta * Ey_over_Bc
-
-    R[:, 1, 0] = -1.0 + 0.5 * delta * ExEy_over_B2c2
-    R[:, 1, 1] = b2
-    R[:, 1, 2] = 0.5 * delta * Ex_over_Bc
-
-    R[:, 2, 0] = Ex_over_Bc
-    R[:, 2, 1] = Ey_over_Bc
-    R[:, 2, 2] = b3
-
-    R *= alpha[:, None, None]
-    return R
-
-def _build_R_linearized(Ex, Ey, Bz, pz, q, dz):
-    """Small-|Bz| fallback: second-order symmetric linearized update (no division by Bz)."""
-    coef = (q * dz) / pz
-    N = Ex.shape[0]
-    R = np.zeros((N, 3, 3), dtype=Ex.dtype)
-    # M matrix entries (see derivation in previous message)
-    R[:, 0, 1] = -coef * Bz
-    R[:, 1, 0] =  coef * Bz
-    R[:, 0, 2] =  coef * (Ex / c)
-    R[:, 1, 2] =  coef * (Ey / c)
-    R[:, 2, 0] = -coef * (Ex / c)
-    R[:, 2, 1] = -coef * (Ey / c)
-    return R
-
-def _make_b(Bx, By, q):
-    # b = q(-By, +Bx, 0) since Ez = 0
-    return np.stack([-q*By, q*Bx, np.zeros_like(Bx)], axis=1)
-
-# ---------- w-push with safe Bz handling (Ez = 0) ----------
-def spatial_boris_w_push_safe(
-    w, Ex, Ey, Bx, By, Bz, pz, q, dz,
-    bz_abs_switch=1e-9,     # Tesla: switch to linearized if |Bz| < this
-    bz_rel_switch=1e-6      # also switch if |E|/(|Bz| c) > this
-):
+def step_spatial_boris(x, y, z, w, pz, q, dz, field_fn):
     """
-    Vectorized update of w=(p_x,p_y,U/c) by Δz, Ez=0.
-    - 'Safe' particles: full spatial-Boris.
-    - 'Small-Bz' particles: linearized symmetric (2nd order) fallback.
-    """
-    N = w.shape[0]
-    b_vec = _make_b(Bx, By, q)
-
-    with np.errstate(divide='ignore', invalid='ignore'):
-        ratio_x = np.abs(Ex) / (np.abs(Bz) * c)
-        ratio_y = np.abs(Ey) / (np.abs(Bz) * c)
-
-    small_mask = (np.abs(Bz) < bz_abs_switch) | (ratio_x > bz_rel_switch) | (ratio_y > bz_rel_switch)
-    safe_mask = ~small_mask
-
-    w_next = np.empty_like(w)
-
-    # Safe: full spatial-Boris (Eqs. 28–30 with R from Eq. 22)
-    if np.any(safe_mask):
-        R_full = _build_R_full(Ex[safe_mask], Ey[safe_mask], Bz[safe_mask], pz[safe_mask], q, dz)
-        b_s = b_vec[safe_mask]; w_s = w[safe_mask]
-        w_minus = w_s + 0.5 * dz * b_s
-        w_plus  = w_minus + np.einsum('nij,nj->ni', R_full, w_minus)
-        w_next[safe_mask] = w_plus + 0.5 * dz * b_s
-
-    # Small-Bz: linearized symmetric update (no division by Bz)
-    if np.any(small_mask):
-        R_lin = _build_R_linearized(Ex[small_mask], Ey[small_mask], Bz[small_mask], pz[small_mask], q, dz)
-        b_l = b_vec[small_mask]; w_l = w[small_mask]
-        w_minus = w_l + 0.5 * dz * b_l
-        w_plus  = w_minus + np.einsum('nij,nj->ni', R_lin, w_minus)
-        w_next[small_mask] = w_plus + 0.5 * dz * b_l
-
-    return w_next, {"mask_safe": safe_mask, "mask_linear": small_mask}
-
-# ---------- full Δz step (Ez = 0) ----------
-def step_spatial_boris_safe(x, y, z, w, pz, q, dz, field_fn, **kwargs):
-    """
-    One Δz step with small-|Bz| protection. field_fn(x,y,z) -> Ex,Ey,Ez,Bx,By,Bz.
-    Ez is ignored (assumed 0) here.
+    One Δz step with E≡0 using the spatial-Boris scheme.
+    - State: x,y,z (N,), w=(px,py,U/c) (N,3), pz (N,) constant (since Ez=0).
+    - field_fn(x,y,z) must return (Ex,Ey,Ez,Bx,By,Bz); we ignore E components.
     """
     x = np.asarray(x); y = np.asarray(y); z = np.asarray(z)
+    w = np.asarray(w); pz = np.asarray(pz)
 
-    # half drift: ds/dz = w/pz
+    # Half drift: ds/dz = w/pz  (only px,py enter)
     xh = x + (w[:, 0] / pz) * (dz * 0.5)
     yh = y + (w[:, 1] / pz) * (dz * 0.5)
     zh = z + dz * 0.5
 
-    Ex, Ey, Ez, Bx, By, Bz = field_fn(xh, yh, zh)
+    # Fields at midpoint (E components ignored / assumed zero)
+    Bx, By, Bz = field_fn(xh, yh, zh)
 
-    w1, aux = spatial_boris_w_push_safe(w, Ex, Ey, Bx, By, Bz, pz, q, dz, **kwargs)
+    # Magnetic half-kick from transverse B: b = q(-By, +Bx, 0)
+    bx = -q * By
+    by =  q * Bx
+    # bz = 0 since E=0 ⇒ U/c unchanged during the “kick”
+    wmx = w[:, 0] + 0.5 * dz * bx
+    wmy = w[:, 1] + 0.5 * dz * by
+    wmz = w[:, 2]                     # unchanged by the kick
 
+    # Exact rotation in (px,py) due to Bz over Δz (no division by Bz):
+    # t = tan(theta/2) with theta = 2*atan(delta/2), delta = q Bz dz / pz
+    t = 0.5 * (q * Bz * dz / pz)
+    denom = 1.0 + t*t
+    s = 2.0 * t / denom               # sin(theta)
+    c0 = (1.0 - t*t) / denom          # cos(theta)
+
+    # Rotate (wmx, wmy) -> (wpx, wpy); wmz (U/c) unaffected by pure rotation
+    wpx = c0 * wmx + s * wmy
+    wpy = c0 * wmy - s * wmx
+    wpz = wmz
+
+    # Second magnetic half-kick
+    w1x = wpx + 0.5 * dz * bx
+    w1y = wpy + 0.5 * dz * by
+    w1z = wpz
+
+    w1 = np.stack([w1x, w1y, w1z], axis=1)
+
+    # Second half drift with updated slopes
     x1 = xh + (w1[:, 0] / pz) * (dz * 0.5)
     y1 = yh + (w1[:, 1] / pz) * (dz * 0.5)
     z1 = z + dz
+
     return x1, y1, z1, w1
