@@ -106,7 +106,7 @@ p = p0.copy()
 
 n_steps = 2000
 l_wig = 2.4
-n_slices = 500
+n_slices = 1000
 
 from integrator_ds import BorisSpatialIntegrator
 
@@ -136,8 +136,12 @@ line.particle_ref = p0.copy()
 
 env['k0l_corr1'] = 0.
 env['k0l_corr2'] = 0.
+env['k0l_corr3'] = 0.
+env['k0l_corr4'] = 0.
 env['k0sl_corr1'] = 0.
 env['k0sl_corr2'] = 0.
+env['k0sl_corr3'] = 0.
+env['k0sl_corr4'] = 0.
 
 for ii in range(n_slices):
     env.elements[f'wiggler_{ii}'] = wig_slices[ii]
@@ -148,7 +152,11 @@ line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'
                     at=-0.1, from_='wiggler_0@start'),
                 env.new('corr2', xt.Multipole, knl=['k0l_corr2'], ksl=['k0sl_corr2'],
                     at=0.1 + l_wig, from_='wiggler_0@start'),
-                env.new('mark', xt.Marker, at=0.2 + l_wig, from_='wiggler_0@start')
+                env.new('corr3', xt.Multipole, knl=['k0l_corr3'], ksl=['k0sl_corr3'],
+                    at=-0.2, from_='wiggler_0@start'),
+                env.new('corr4', xt.Multipole, knl=['k0l_corr4'], ksl=['k0sl_corr4'],
+                    at=0.2 + l_wig, from_='wiggler_0@start'),
+                env.new('mark', xt.Marker, at=0.25 + l_wig, from_='wiggler_0@start')
                 ])
 line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
@@ -161,24 +169,26 @@ tw_no_wig = line.twiss4d()
 #  'k0sl_corr2': np.float64(0.000311552319146383)})
 
 # # Kicks to be used without integral compensation and n_steps=2000
-line.vars.update(
-{'k0l_corr1': np.float64(0.0001887415501030932),
- 'k0l_corr2': np.float64(-0.00032155672692134394),
- 'k0sl_corr1': np.float64(2.4757237666615697e-05),
- 'k0sl_corr2': np.float64(0.000309933033812378)})
+# line.vars.update(
+# {'k0l_corr1': np.float64(0.0001887415501030932),
+#  'k0l_corr2': np.float64(-0.00032155672692134394),
+#  'k0sl_corr1': np.float64(2.4757237666615697e-05),
+#  'k0sl_corr2': np.float64(0.000309933033812378)})
 
-# # To compute the kicks
-# wig.n_steps = 10 # no need for accuracty when initializing the optimizer
-# opt = line.match(
-#     solve=False,
-#     init=tw_no_wig.get_twiss_init(0),
-#     only_orbit=True,
-#     include_collective=True,
-#     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2'], step=1e-6),
-#     targets=xt.TargetSet(x=0, px=0, y=0, py=0., at='mark')
-# )
-# wig.n_steps = n_steps # Back to accurate value
-# opt.step(2)
+# To compute the kicks
+opt = line.match(
+    solve=False,
+    init=tw_no_wig.get_twiss_init(0),
+    only_orbit=True,
+    include_collective=True,
+    vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
+                      'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'], step=1e-6),
+    targets=[
+        xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
+        xt.TargetSet(x=0, y=0, at='wiggler_167'),
+        xt.TargetSet(x=0, y=0, at='wiggler_833')],
+)
+opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
