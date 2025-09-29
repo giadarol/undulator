@@ -96,15 +96,15 @@ class MyWiggler:
         Bs = self.Bs_fun(x, y, s + self.s0)
         return Bx, By, Bs
 
-mywig = MyWiggler(Bxfun, Byfun, Bsfun, s0=-1.2)
+mywig = MyWiggler(Bxfun, Byfun, Bsfun, s0=-1.1)
 
 p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
                   energy0=2.4e9)
 
 p = p0.copy()
 
-n_steps = 2000
-l_wig = 2.4
+n_steps = 1000
+l_wig = 2.2
 n_slices = 1000
 
 s_cuts = np.linspace(0, l_wig, n_slices + 1)
@@ -139,7 +139,7 @@ line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'
                 env.new('corr2', xt.Multipole, knl=['k0l_corr2'], ksl=['k0sl_corr2'],
                     at=0.01 + l_wig, from_='wiggler_0@start'),
                 env.new('corr3', xt.Multipole, knl=['k0l_corr3'], ksl=['k0sl_corr3'],
-                    at=-0.2, from_='wiggler_0@start'),
+                    at=-0.02, from_='wiggler_0@start'),
                 env.new('corr4', xt.Multipole, knl=['k0l_corr4'], ksl=['k0sl_corr4'],
                     at=0.02 + l_wig, from_='wiggler_0@start'),
                 env.new('mark', xt.Marker, at=0.25 + l_wig, from_='wiggler_0@start')
@@ -158,22 +158,24 @@ tw_no_wig = line.twiss4d()
 #  'k0l_corr4': np.float64(0.007758215805844963),
 #  'k0sl_corr4': np.float64(0.003220669295556179)})
 
-# # To compute the kicks
-# opt = line.match(
-#     solve=False,
-#     init=tw_no_wig.get_twiss_init(0),
-#     only_orbit=True,
-#     include_collective=True,
-#     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
-#                       'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'
-#                       ], step=1e-6),
-#     targets=[
-#         xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
-#         xt.TargetSet(x=0, y=0, at='wiggler_167'),
-#         xt.TargetSet(x=0, y=0, at='wiggler_833')
-#         ],
-# )
-# opt.step(2)
+# To compute the kicks
+opt = line.match(
+    solve=False,
+    init=tw_no_wig.get_twiss_init(0),
+    only_orbit=True,
+    include_collective=True,
+    vary=xt.VaryList(['k0l_corr1', 'k0sl_corr1',
+                      'k0l_corr2', 'k0sl_corr2',
+                      'k0l_corr3', 'k0sl_corr3',
+                      'k0l_corr4', 'k0sl_corr4',
+                      ], step=1e-6),
+    targets=[
+        xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
+        xt.TargetSet(x=0, y=0, at='wiggler_167'),
+        xt.TargetSet(x=0, y=0, at='wiggler_833')
+        ],
+)
+opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
