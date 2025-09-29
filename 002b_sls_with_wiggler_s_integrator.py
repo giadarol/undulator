@@ -104,7 +104,7 @@ p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
 
 p = p0.copy()
 
-n_steps = 2000
+n_steps = 4000
 l_wig = 2.4
 n_slices = 1000
 
@@ -179,11 +179,13 @@ line.vars.update(
 #     only_orbit=True,
 #     include_collective=True,
 #     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
-#                       'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'], step=1e-6),
+#                     #   'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'
+#                       ], step=1e-6),
 #     targets=[
 #         xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
 #         xt.TargetSet(x=0, y=0, at='wiggler_167'),
-#         xt.TargetSet(x=0, y=0, at='wiggler_833')],
+#         xt.TargetSet(x=0, y=0, at='wiggler_833')
+#         ],
 # )
 # opt.step(2)
 
