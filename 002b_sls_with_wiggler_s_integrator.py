@@ -89,11 +89,12 @@ class MyWiggler:
         self.By_fun = By_fun
         self.Bs_fun = Bs_fun
         self.s0 = s0
+        self.scale = 1.  # Scale to meters
 
     def get_field(self, x, y, s):
-        Bx = self.Bx_fun(x, y, s + self.s0)
-        By = self.By_fun(x, y, s + self.s0)
-        Bs = self.Bs_fun(x, y, s + self.s0)
+        Bx = self.scale * self.Bx_fun(x, y, s + self.s0)
+        By = self.scale * self.By_fun(x, y, s + self.s0)
+        Bs = self.scale * self.Bs_fun(x, y, s + self.s0)
         return Bx, By, Bs
 
 mywig = MyWiggler(Bxfun, Byfun, Bsfun, s0=-1.1)
@@ -121,7 +122,9 @@ Bx_mid, By_mid, Bs_mid = wig_slices[0].fieldmap_callable(0, 0, s_mid)
 
 env = xt.load('b075_2024.09.25.madx')
 line = env.ring
+line.configure_bend_model(core='mat-kick-mat')
 line.particle_ref = p0.copy()
+
 
 env['k0l_corr1'] = 0.
 env['k0l_corr2'] = 0.
@@ -131,40 +134,41 @@ env['k0sl_corr1'] = 0.
 env['k0sl_corr2'] = 0.
 env['k0sl_corr3'] = 0.
 env['k0sl_corr4'] = 0.
+env['on_wig_corr'] = 1.0
 
 for ii in range(n_slices):
     env.elements[f'wiggler_{ii}'] = wig_slices[ii]
 wiggler = env.new_line(components=['wiggler_' + str(ii) for ii in range(n_slices)])
 
-line.insert(wiggler, anchor='center', at=223.8)
-line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'],
-                    at=-0.01, from_='wiggler_0@start'),
-                env.new('corr2', xt.Multipole, knl=['k0l_corr2'], ksl=['k0sl_corr2'],
-                    at=0.01 + l_wig, from_='wiggler_0@start'),
-                env.new('corr3', xt.Multipole, knl=['k0l_corr3'], ksl=['k0sl_corr3'],
-                    at=-0.02, from_='wiggler_0@start'),
-                env.new('corr4', xt.Multipole, knl=['k0l_corr4'], ksl=['k0sl_corr4'],
-                    at=0.02 + l_wig, from_='wiggler_0@start'),
-                env.new('mark', xt.Marker, at=0.25 + l_wig, from_='wiggler_0@start')
-                ])
-line.configure_bend_model(core='mat-kick-mat')
-tw_no_wig = line.twiss4d()
+env.new('corr1', xt.Multipole, knl=['on_wig_corr * k0l_corr1'], ksl=['on_wig_corr * k0sl_corr1'])
+env.new('corr2', xt.Multipole, knl=['on_wig_corr * k0l_corr2'], ksl=['on_wig_corr * k0sl_corr2'])
+env.new('corr3', xt.Multipole, knl=['on_wig_corr * k0l_corr3'], ksl=['on_wig_corr * k0sl_corr3'])
+env.new('corr4', xt.Multipole, knl=['on_wig_corr * k0l_corr4'], ksl=['on_wig_corr * k0sl_corr4'])
 
-# Kicks to be used without integral compensation and n_steps=1000
-line.vars.update(
-{'k0l_corr1': np.float64(0.0078736094559936),
- 'k0sl_corr1': np.float64(0.002788220434398933),
- 'k0l_corr2': np.float64(-0.002955795863010176),
- 'k0sl_corr2': np.float64(-0.0024118247186726257),
- 'k0l_corr3': np.float64(-0.0075141725043985684),
- 'k0sl_corr3': np.float64(-0.002554723984035583),
- 'k0l_corr4': np.float64(0.0026022084243928247),
- 'k0sl_corr4': np.float64(0.0022315830187233745)})
+wiggler.insert([
+    env.place('corr1', at=0.02),
+    env.place('corr2', at=0.1),
+    env.place('corr3', at=l_wig - 0.1),
+    env.place('corr4', at=l_wig - 0.02),
+    ], s_tol=5e-3
+)
+wiggler.particle_ref = line.particle_ref
+
+# Computed for 1000 slices, 1000 steps
+env.vars.update(
+{'k0l_corr1': np.float64(-0.0004540792291112204),
+ 'k0sl_corr1': np.float64(-1.213769189237666e-06),
+ 'k0l_corr2': np.float64(0.0008135172335552242),
+ 'k0sl_corr2': np.float64(0.00023470961164860475),
+ 'k0l_corr3': np.float64(-0.0001955197609031625),
+ 'k0sl_corr3': np.float64(-0.00021394733008765638),
+ 'k0l_corr4': np.float64(-0.00015806879956816854),
+ 'k0sl_corr4': np.float64(3.370506139561265e-05)})
 
 # # To compute the kicks
-# opt = line.match(
+# opt = wiggler.match(
 #     solve=False,
-#     init=tw_no_wig.get_twiss_init(0),
+#     betx=0, bety=0,
 #     only_orbit=True,
 #     include_collective=True,
 #     vary=xt.VaryList(['k0l_corr1', 'k0sl_corr1',
@@ -173,23 +177,33 @@ line.vars.update(
 #                       'k0l_corr4', 'k0sl_corr4',
 #                       ], step=1e-6),
 #     targets=[
-#         xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
-#         # xt.Target(lambda tw: tw['x', 'wiggler_167'] - tw['x', 'wiggler_833'], value=0, tol=1e-10),
-#         # xt.Target(lambda tw: tw['y', 'wiggler_167'] - tw['y', 'wiggler_833'], value=0, tol=1e-10),
+#         xt.TargetSet(x=0, px=0, y=0, py=0., at=xt.END),
 #         xt.TargetSet(x=0, y=0, at='wiggler_167'),
 #         xt.TargetSet(x=0, y=0, at='wiggler_833')
 #         ],
 # )
 # opt.step(2)
 
-# tw_wig = line.twiss4d(include_collective=True)
-tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
+print('Twiss wiggler only')
+tw_wig_only = wiggler.twiss(include_collective=True, betx=1, bety=1)
 
-p_co = tw_wig_open.particle_on_co.copy()
+line.insert(wiggler, anchor='center', at=223.8)
+
+env['on_wig_corr'] = 0
+mywig.scale = 0
+tw_no_wig = line.twiss4d(strengths=True)
+
+env['on_wig_corr'] = 1.0
+mywig.scale = 1.0
+
+print('Twiss full line with wiggler')
+p_co = tw_no_wig.particle_on_co.copy()
 p_co.at_element=0
+
 tw = line.twiss4d(include_collective=True, particle_on_co=p_co,
                   compute_chromatic_properties=False)
 
+print('Twiss off momentum, positive delta')
 delta_chrom = 1e-4
 p_co_plus = p_co.copy()
 p_co_plus.delta += delta_chrom
@@ -202,6 +216,7 @@ tw_plus = line.twiss4d(include_collective=True,
                        particle_on_co=p_co_plus,
                        compute_chromatic_properties=False)
 
+print('Twiss off momentum, negative delta')
 p_co_minus = p_co_plus.copy()
 p_co_minus.delta -= delta_chrom
 p_co_minus.x -= tw.dx[0] * delta_chrom
