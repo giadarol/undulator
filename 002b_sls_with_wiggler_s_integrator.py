@@ -108,6 +108,7 @@ l_wig = 2.2
 n_slices = 1000
 
 s_cuts = np.linspace(0, l_wig, n_slices + 1)
+s_mid = 0.5 * (s_cuts[:-1] + s_cuts[1:])
 
 wig_slices = []
 for ii in range(n_slices):
@@ -115,6 +116,8 @@ for ii in range(n_slices):
                                  n_steps=np.round(n_steps / n_slices).astype(int),
                                  verbose=True)
     wig_slices.append(wig)
+
+Bx_mid, By_mid, Bs_mid = wig_slices[0].fieldmap_callable(0, 0, s_mid)
 
 env = xt.load('b075_2024.09.25.madx')
 line = env.ring
@@ -147,40 +150,40 @@ line.insert([env.new('corr1', xt.Multipole, knl=['k0l_corr1'], ksl=['k0sl_corr1'
 line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
 
-# Kicks to be used without integral compensation and n_steps=2000
-# line.vars.update(
-# {'k0l_corr1': np.float64(0.0007039909450695799),
-#  'k0l_corr2': np.float64(-0.008164474082472721),
-#  'k0sl_corr1': np.float64(0.00017719794038307854),
-#  'k0sl_corr2': np.float64(-0.0029243554446412904),
-#  'k0l_corr3': np.float64(-0.0004308706944159601),
-#  'k0sl_corr3': np.float64(-0.00013866666663981872),
-#  'k0l_corr4': np.float64(0.007758215805844963),
-#  'k0sl_corr4': np.float64(0.003220669295556179)})
+# Kicks to be used without integral compensation and n_steps=1000
+line.vars.update(
+{'k0l_corr1': np.float64(0.0078736094559936),
+ 'k0sl_corr1': np.float64(0.002788220434398933),
+ 'k0l_corr2': np.float64(-0.002955795863010176),
+ 'k0sl_corr2': np.float64(-0.0024118247186726257),
+ 'k0l_corr3': np.float64(-0.0075141725043985684),
+ 'k0sl_corr3': np.float64(-0.002554723984035583),
+ 'k0l_corr4': np.float64(0.0026022084243928247),
+ 'k0sl_corr4': np.float64(0.0022315830187233745)})
 
-# To compute the kicks
-opt = line.match(
-    solve=False,
-    init=tw_no_wig.get_twiss_init(0),
-    only_orbit=True,
-    include_collective=True,
-    vary=xt.VaryList(['k0l_corr1', 'k0sl_corr1',
-                      'k0l_corr2', 'k0sl_corr2',
-                      'k0l_corr3', 'k0sl_corr3',
-                      'k0l_corr4', 'k0sl_corr4',
-                      ], step=1e-6),
-    targets=[
-        xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
-        xt.TargetSet(x=0, y=0, at='wiggler_167'),
-        xt.TargetSet(x=0, y=0, at='wiggler_833')
-        ],
-)
-opt.step(2)
+# # To compute the kicks
+# opt = line.match(
+#     solve=False,
+#     init=tw_no_wig.get_twiss_init(0),
+#     only_orbit=True,
+#     include_collective=True,
+#     vary=xt.VaryList(['k0l_corr1', 'k0sl_corr1',
+#                       'k0l_corr2', 'k0sl_corr2',
+#                       'k0l_corr3', 'k0sl_corr3',
+#                       'k0l_corr4', 'k0sl_corr4',
+#                       ], step=1e-6),
+#     targets=[
+#         xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
+#         # xt.Target(lambda tw: tw['x', 'wiggler_167'] - tw['x', 'wiggler_833'], value=0, tol=1e-10),
+#         # xt.Target(lambda tw: tw['y', 'wiggler_167'] - tw['y', 'wiggler_833'], value=0, tol=1e-10),
+#         xt.TargetSet(x=0, y=0, at='wiggler_167'),
+#         xt.TargetSet(x=0, y=0, at='wiggler_833')
+#         ],
+# )
+# opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
-
-prrrr
 
 p_co = tw_wig_open.particle_on_co.copy()
 p_co.at_element=0
