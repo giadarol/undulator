@@ -1,5 +1,3 @@
-import xobjects as xo
-import xtrack as xt
 import numpy as np
 
 from scipy.constants import c as clight
@@ -9,23 +7,13 @@ class BorisSpatialIntegrator:
 
     isthick = True
 
-    def __init__(self, fieldmap, s_start, s_end, n_steps,
-                 Bx0=0, By0=0):
-        self.fieldmap = fieldmap
+    def __init__(self, fieldmap_callable, s_start, s_end, n_steps):
+        self.fieldmap_callable = fieldmap_callable
         self.s_start = s_start
         self.s_end = s_end
         self.ds = (s_end - s_start) / n_steps
         self.n_steps = n_steps
-        self.ctx = None
         self.length = s_end - s_start
-        self.Bx0 = Bx0
-        self.By0 = By0
-
-    def get_field(self, x, y, s):
-        Bx, By, Bz = self.fieldmap.get_field(x, y, s)
-        Bx += self.Bx0
-        By += self.By0
-        return Bx, By, Bz
 
     def track(self, p):
 
@@ -63,7 +51,7 @@ class BorisSpatialIntegrator:
 
             x_new, y_new, z_new, w_new = step_spatial_boris_B(x, y, z, w,
                 charge0_coulomb, self.ds,
-                field_fn=self.get_field)
+                field_fn=self.fieldmap_callable)
             p.x = x_new.copy()
             p.y = y_new.copy()
             p.s = z_new.copy()

@@ -104,7 +104,7 @@ p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
 
 p = p0.copy()
 
-n_steps = 4000
+n_steps = 2000
 l_wig = 2.4
 n_slices = 1000
 
@@ -114,7 +114,7 @@ s_cuts = np.linspace(0, l_wig, n_slices + 1)
 
 wig_slices = []
 for ii in range(n_slices):
-    wig = BorisSpatialIntegrator(fieldmap=mywig, s_start=s_cuts[ii], s_end=s_cuts[ii + 1],
+    wig = BorisSpatialIntegrator(fieldmap_callable=mywig.get_field, s_start=s_cuts[ii], s_end=s_cuts[ii + 1],
                                  n_steps=np.round(n_steps / n_slices).astype(int))
     wig_slices.append(wig)
 
