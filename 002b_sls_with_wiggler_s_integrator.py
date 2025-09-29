@@ -3,14 +3,8 @@ from scipy import signal
 import bpmeth as bp
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import savgol_filter, butter, filtfilt
-from scipy.integrate import cumulative_trapezoid
-
-from scipy.constants import c as clight
-from scipy.constants import e as qe
 
 import xtrack as xt
-import xobjects as xo
 
 ########################################################################################################################
 # TEST THE CLASS
@@ -108,31 +102,18 @@ n_steps = 2000
 l_wig = 2.4
 n_slices = 1000
 
-from integrator_ds import BorisSpatialIntegrator
-
 s_cuts = np.linspace(0, l_wig, n_slices + 1)
 
 wig_slices = []
 for ii in range(n_slices):
-    wig = BorisSpatialIntegrator(fieldmap_callable=mywig.get_field, s_start=s_cuts[ii], s_end=s_cuts[ii + 1],
-                                 n_steps=np.round(n_steps / n_slices).astype(int))
+    wig = xt.BorisSpatialIntegrator(fieldmap_callable=mywig.get_field, s_start=s_cuts[ii], s_end=s_cuts[ii + 1],
+                                 n_steps=np.round(n_steps / n_slices).astype(int),
+                                 verbose=True)
     wig_slices.append(wig)
-
-# Field on axis
-# s_test = np.linspace(0, 2.4, 1000)
-# Bx_init, By_init, Bz_init = wig.get_field(0 * s_test, 0 * s_test, s_test)
-# integral_By_init = cumulative_trapezoid(By_init, s_test)
-# integral_Bx_init = cumulative_trapezoid(Bx_init, s_test)
-# wig.By0 = -integral_By_init [-1] / s_cut
-# wig.Bx0 = -integral_Bx_init [-1] / s_cut
-# Bx, By, Bz = wig.get_field(0 * s_test, 0 * s_test, s_test)
-# integral_By = cumulative_trapezoid(By, s_test)
-# integral_Bx = cumulative_trapezoid(Bx, s_test)
 
 env = xt.load('b075_2024.09.25.madx')
 line = env.ring
 line.particle_ref = p0.copy()
-
 
 env['k0l_corr1'] = 0.
 env['k0l_corr2'] = 0.
@@ -162,32 +143,32 @@ line.configure_bend_model(core='mat-kick-mat')
 tw_no_wig = line.twiss4d()
 
 # Kicks to be used without integral compensation and n_steps=2000
-line.vars.update(
-{'k0l_corr1': np.float64(0.0007039909450695799),
- 'k0l_corr2': np.float64(-0.008164474082472721),
- 'k0sl_corr1': np.float64(0.00017719794038307854),
- 'k0sl_corr2': np.float64(-0.0029243554446412904),
- 'k0l_corr3': np.float64(-0.0004308706944159601),
- 'k0sl_corr3': np.float64(-0.00013866666663981872),
- 'k0l_corr4': np.float64(0.007758215805844963),
- 'k0sl_corr4': np.float64(0.003220669295556179)})
+# line.vars.update(
+# {'k0l_corr1': np.float64(0.0007039909450695799),
+#  'k0l_corr2': np.float64(-0.008164474082472721),
+#  'k0sl_corr1': np.float64(0.00017719794038307854),
+#  'k0sl_corr2': np.float64(-0.0029243554446412904),
+#  'k0l_corr3': np.float64(-0.0004308706944159601),
+#  'k0sl_corr3': np.float64(-0.00013866666663981872),
+#  'k0l_corr4': np.float64(0.007758215805844963),
+#  'k0sl_corr4': np.float64(0.003220669295556179)})
 
-# # To compute the kicks
-# opt = line.match(
-#     solve=False,
-#     init=tw_no_wig.get_twiss_init(0),
-#     only_orbit=True,
-#     include_collective=True,
-#     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
-#                     #   'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'
-#                       ], step=1e-6),
-#     targets=[
-#         xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
-#         xt.TargetSet(x=0, y=0, at='wiggler_167'),
-#         xt.TargetSet(x=0, y=0, at='wiggler_833')
-#         ],
-# )
-# opt.step(2)
+# To compute the kicks
+opt = line.match(
+    solve=False,
+    init=tw_no_wig.get_twiss_init(0),
+    only_orbit=True,
+    include_collective=True,
+    vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
+                      'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'
+                      ], step=1e-6),
+    targets=[
+        xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
+        xt.TargetSet(x=0, y=0, at='wiggler_167'),
+        xt.TargetSet(x=0, y=0, at='wiggler_833')
+        ],
+)
+opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
