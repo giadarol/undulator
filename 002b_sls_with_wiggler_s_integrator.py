@@ -38,31 +38,36 @@ test_wiggler = Wiggler(file_path='knot_map_test.txt',
                        ds=dz,
                        peak_window=(99, 2100),
                        n_modes=[3, 3, 1],
-                       enge_deg=[[8, 5], [5, 5], [5, 5]],
+                       poly_deg=[[4, 4], [4, 4], [4, 4]],
+                       poly_pieces=[[19, 35], [19, 36], [8, 8]],
                        der=False
-)
+                       )
 
 test_wiggler.set()
+#Test_Wiggler.plot_fields()
+#Test_Wiggler.plot_integrated_fields()
 
+print("DERIVATIVES:")
 test_wiggler_der = Wiggler(file_path='knot_map_test.txt',
                            xy_point=(0, 0),
                            dx=dz,
                            dy=dz,
                            ds=dz,
                            n_modes=[6, 4, 1],
-                           enge_deg=[[8, 5], [8, 10], [5, 5]],
+                           poly_deg=[[4, 4], [4, 4], [4, 4]],
+                           poly_pieces=[[15, 15], [15, 15], [15, 15]],
                            peak_window=(99, 2100),
                            der=True,
                            filter_params=(None, 2090, 7, 11, 3)
-)
+                           )
 
 test_wiggler_der.set()
 
-Bx_string, Cx = test_wiggler.export_piecewise_string(component="Bx")
-By_string, Cy = test_wiggler.export_piecewise_string(component="By")
-Bs_string, Cs = test_wiggler.export_piecewise_string(component="Bs")
-Bx_der_string, Cx_der = test_wiggler_der.export_piecewise_string(component="Bx")
-By_der_string, Cy_der = test_wiggler_der.export_piecewise_string(component="By")
+Bx_string = test_wiggler.export_piecewise_sympy(field="Bx")
+Bx_der_string = test_wiggler_der.export_piecewise_sympy(field="Bx")
+By_string = test_wiggler.export_piecewise_sympy(field="By")
+By_der_string = test_wiggler_der.export_piecewise_sympy(field="By")
+Bs_string = test_wiggler.export_piecewise_sympy(field="Bs")
 
 a1 = Bx_string
 b1 = By_string
@@ -153,25 +158,27 @@ tw_no_wig = line.twiss4d()
 #  'k0l_corr4': np.float64(0.007758215805844963),
 #  'k0sl_corr4': np.float64(0.003220669295556179)})
 
-# To compute the kicks
-opt = line.match(
-    solve=False,
-    init=tw_no_wig.get_twiss_init(0),
-    only_orbit=True,
-    include_collective=True,
-    vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
-                      'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'
-                      ], step=1e-6),
-    targets=[
-        xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
-        xt.TargetSet(x=0, y=0, at='wiggler_167'),
-        xt.TargetSet(x=0, y=0, at='wiggler_833')
-        ],
-)
-opt.step(2)
+# # To compute the kicks
+# opt = line.match(
+#     solve=False,
+#     init=tw_no_wig.get_twiss_init(0),
+#     only_orbit=True,
+#     include_collective=True,
+#     vary=xt.VaryList(['k0l_corr1', 'k0l_corr2', 'k0sl_corr1', 'k0sl_corr2',
+#                       'k0l_corr3', 'k0sl_corr3', 'k0l_corr4', 'k0sl_corr4'
+#                       ], step=1e-6),
+#     targets=[
+#         xt.TargetSet(x=0, px=0, y=0, py=0., at='mark'),
+#         xt.TargetSet(x=0, y=0, at='wiggler_167'),
+#         xt.TargetSet(x=0, y=0, at='wiggler_833')
+#         ],
+# )
+# opt.step(2)
 
 # tw_wig = line.twiss4d(include_collective=True)
 tw_wig_open = line.twiss4d(include_collective=True, init=tw_no_wig.get_twiss_init(0))
+
+prrrr
 
 p_co = tw_wig_open.particle_on_co.copy()
 p_co.at_element=0
