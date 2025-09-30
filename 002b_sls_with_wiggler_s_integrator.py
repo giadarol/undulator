@@ -113,6 +113,11 @@ for ii in range(n_slices):
     wig_slices.append(wig)
 
 Bx_mid, By_mid, Bs_mid = wig_slices[0].fieldmap_callable(0, 0, s_mid)
+print('extracting a3 and b3')
+a3_mid  = [wiggler_map.a[2].subs({wiggler_map.s: ss}) for ss in s_mid + mywig.s0]
+b3_mid  = [wiggler_map.b[2].subs({wiggler_map.s: ss}) for ss in s_mid + mywig.s0]
+print('done')
+
 
 env = xt.load('b075_2024.09.25.madx')
 line = env.ring
@@ -122,7 +127,7 @@ line.particle_ref = p0.copy()
 
 for ii in range(n_slices):
     env.elements[f'wigslice_{ii}'] = wig_slices[ii]
-wiggler_map = env.new_line(components=['wigslice_' + str(ii) for ii in range(n_slices)])
+wiggler = env.new_line(components=['wigslice_' + str(ii) for ii in range(n_slices)])
 
 env['k0l_corr1'] = 0.
 env['k0l_corr2'] = 0.
@@ -139,14 +144,14 @@ env.new('corr2', xt.Multipole, knl=['on_wig_corr * k0l_corr2'], ksl=['on_wig_cor
 env.new('corr3', xt.Multipole, knl=['on_wig_corr * k0l_corr3'], ksl=['on_wig_corr * k0sl_corr3'])
 env.new('corr4', xt.Multipole, knl=['on_wig_corr * k0l_corr4'], ksl=['on_wig_corr * k0sl_corr4'])
 
-wiggler_map.insert([
+wiggler.insert([
     env.place('corr1', at=0.02),
     env.place('corr2', at=0.1),
     env.place('corr3', at=l_wig - 0.1),
     env.place('corr4', at=l_wig - 0.02),
     ], s_tol=5e-3
 )
-wiggler_map.particle_ref = line.particle_ref
+wiggler.particle_ref = line.particle_ref
 
 # Computed for 1000 slices, 1000 steps
 env.vars.update(
@@ -179,7 +184,7 @@ env.vars.update(
 # opt.step(2)
 
 print('Twiss wiggler only')
-tw_wig_only = wiggler_map.twiss(include_collective=True, betx=1, bety=1)
+tw_wig_only = wiggler.twiss(include_collective=True, betx=1, bety=1)
 
 wiggler_places = [
     'ars02_uind_0500_1',
@@ -197,7 +202,7 @@ wiggler_places = [
 
 tt = line.get_table()
 for wig_place in wiggler_places:
-    line.insert(wiggler_map, anchor='start', at=tt['s', wig_place])
+    line.insert(wiggler, anchor='start', at=tt['s', wig_place])
 
 env['on_wig_corr'] = 0
 mywig.scale = 0
@@ -219,34 +224,34 @@ tw = line.twiss4d(include_collective=True, particle_on_co=p_co,
 
 
 
-# tw_vs_momentum = {}
-# for delta in deltas:
-#     print(f'Twiss off momentum, delta = {delta}')
-#     p_off = p_co.copy()
-#     p_off.delta += delta
-#     p_off.x += tw.dx[0] * delta
-#     p_off.px += tw.dpx[0] * delta
-#     p_off.y += tw.dy[0] * delta
-#     p_off.py += tw.dpy[0] * delta
-#     p_off.at_element=0
-#     tw_vs_momentum[delta] = line.twiss4d(include_collective=True,
-#                                          particle_on_co=p_off,
-#                                          compute_chromatic_properties=False)
+tw_vs_momentum = {}
+for delta in deltas:
+    print(f'Twiss off momentum, delta = {delta}')
+    p_off = p_co.copy()
+    p_off.delta += delta
+    p_off.x += tw.dx[0] * delta
+    p_off.px += tw.dpx[0] * delta
+    p_off.y += tw.dy[0] * delta
+    p_off.py += tw.dpy[0] * delta
+    p_off.at_element=0
+    tw_vs_momentum[delta] = line.twiss4d(include_collective=True,
+                                         particle_on_co=p_off,
+                                         compute_chromatic_properties=False)
 
 
-# cols_chrom, scalars_chrom = xt.twiss._compute_chromatic_functions(line, init=None,
-#                                       delta_chrom=delta_chrom,
-#                                       steps_r_matrix=None,
-#                                       matrix_responsiveness_tol=None,
-#                                       matrix_stability_tol=None,
-#                                       symplectify=None,
-#                                       tw_chrom_res=[tw_vs_momentum[-delta_chrom],
-#                                                     tw_vs_momentum[delta_chrom]],
-#                                       on_momentum_twiss_res=tw)
+cols_chrom, scalars_chrom = xt.twiss._compute_chromatic_functions(line, init=None,
+                                      delta_chrom=delta_chrom,
+                                      steps_r_matrix=None,
+                                      matrix_responsiveness_tol=None,
+                                      matrix_stability_tol=None,
+                                      symplectify=None,
+                                      tw_chrom_res=[tw_vs_momentum[-delta_chrom],
+                                                    tw_vs_momentum[delta_chrom]],
+                                      on_momentum_twiss_res=tw)
 
-# tw._data.update(cols_chrom)
-# tw._data.update(scalars_chrom)
-# tw._col_names += list(cols_chrom.keys())
+tw._data.update(cols_chrom)
+tw._data.update(scalars_chrom)
+tw._col_names += list(cols_chrom.keys())
 
 dl = np.diff(s_cuts)
 wig_mult_places = []
@@ -254,13 +259,13 @@ for ii, (bbx, bby) in enumerate(zip(Bx_mid, By_mid)):
     nn = f'wig_mult_{ii}'
     pp = env.new(nn, xt.Bend,
                  length=dl[ii],
-                 knl=[dl[ii] * bby / p0.rigidity0[0]],
-                 ksl=[dl[ii] * bbx / p0.rigidity0[0]],
+                 knl=[dl[ii] * bby / p0.rigidity0[0], 0, dl[ii] * b3_mid[ii] / p0.rigidity0[0]],
+                 ksl=[dl[ii] * bbx / p0.rigidity0[0], 0, dl[ii] * a3_mid[ii] / p0.rigidity0[0]],
                  at=s_mid[ii])
     wig_mult_places.append(pp)
 
-wiggler_mult = wiggler_map.copy(shallow=True)
-tt_slices = wiggler_map.get_table().rows['wigslic.*']
+wiggler_mult = wiggler.copy(shallow=True)
+tt_slices = wiggler.get_table().rows['wigslic.*']
 
 wiggler_mult.remove(tt_slices.name)
 wiggler_mult.insert(wig_mult_places)
@@ -273,12 +278,4 @@ line_wig_mult.particle_ref = p0.copy()
 for wig_place in wiggler_places:
     line_wig_mult.insert(wiggler_mult, anchor='start', at=tt['s', wig_place])
 
-# qx_vs_delta = [tt.qx for tt in tw_vs_momentum.values()]
-# qy_vs_delta = [tt.qy for tt in tw_vs_momentum.values()]
-# qx_vs_delta_no_wig = [tt.qx for tt in tw_vs_momentum_no_wig.values()]
-# qy_vs_delta_no_wig = [tt.qy for tt in tw_vs_momentum_no_wig.values()]
-
-# plt.close('all')
-# plt.figure(1)
-# plt.plot(deltas, qx_vs_delta-tw.dqx*np.array(deltas)-tw.qx)
-# plt.plot(deltas, qx_vs_delta_no_wig-tw_no_wig.dqx*np.array(deltas)-tw_no_wig.qx, '--')
+tw_wig_mult = line_wig_mult.twiss4d()
