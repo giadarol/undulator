@@ -70,8 +70,8 @@ bs = Bs_string
 a2 = 0
 b2 = 0
 
-a3 = Bx_der_string
-b3 = By_der_string
+a3 = 0 #Bx_der_string
+b3 = 0 #By_der_string
 
 curv=0
 wiggler = bp.GeneralVectorPotential(hs=f"{curv}",a=(f"{a1}", f"{a2}", f"{a3}"),b=(f"{b1}", f"{b2}", f"{b3}"), bs=f"{bs}")
@@ -252,7 +252,8 @@ dl = np.diff(s_cuts)
 wig_mult_places = []
 for ii, (bbx, bby) in enumerate(zip(Bx_mid, By_mid)):
     nn = f'wig_mult_{ii}'
-    pp = env.new(nn, xt.Multipole,
+    pp = env.new(nn, xt.Bend,
+                 length=dl[ii],
                  knl=[dl[ii] * bby / p0.rigidity0[0]],
                  ksl=[dl[ii] * bbx / p0.rigidity0[0]],
                  at=s_mid[ii])
@@ -267,7 +268,7 @@ wiggler_mult.insert(wig_mult_places)
 tw_wig_mult = wiggler_mult.twiss(betx=1, bety=1)
 
 line_wig_mult = env['ring_no_wiggler'].copy(shallow=True)
-line.particle_ref = p0.copy()
+line_wig_mult.particle_ref = p0.copy()
 
 for wig_place in wiggler_places:
     line_wig_mult.insert(wiggler_mult, anchor='start', at=tt['s', wig_place])
