@@ -70,12 +70,12 @@ bs = Bs_string
 a2 = 0
 b2 = 0
 
-a3 = 0 #Bx_der_string
-b3 = 0 #By_der_string
+a3 = Bx_der_string
+b3 = By_der_string
 
 curv=0
-wiggler = bp.GeneralVectorPotential(hs=f"{curv}",a=(f"{a1}", f"{a2}", f"{a3}"),b=(f"{b1}", f"{b2}", f"{b3}"), bs=f"{bs}")
-Bxfun, Byfun, Bsfun = wiggler.get_Bfield()
+wiggler_map = bp.GeneralVectorPotential(hs=f"{curv}",a=(f"{a1}", f"{a2}", f"{a3}"),b=(f"{b1}", f"{b2}", f"{b3}"), bs=f"{bs}")
+Bxfun, Byfun, Bsfun = wiggler_map.get_Bfield()
 
 class MyWiggler:
     def __init__(self, Bx_fun, By_fun, Bs_fun, s0=0):
@@ -122,7 +122,7 @@ line.particle_ref = p0.copy()
 
 for ii in range(n_slices):
     env.elements[f'wigslice_{ii}'] = wig_slices[ii]
-wiggler = env.new_line(components=['wigslice_' + str(ii) for ii in range(n_slices)])
+wiggler_map = env.new_line(components=['wigslice_' + str(ii) for ii in range(n_slices)])
 
 env['k0l_corr1'] = 0.
 env['k0l_corr2'] = 0.
@@ -139,14 +139,14 @@ env.new('corr2', xt.Multipole, knl=['on_wig_corr * k0l_corr2'], ksl=['on_wig_cor
 env.new('corr3', xt.Multipole, knl=['on_wig_corr * k0l_corr3'], ksl=['on_wig_corr * k0sl_corr3'])
 env.new('corr4', xt.Multipole, knl=['on_wig_corr * k0l_corr4'], ksl=['on_wig_corr * k0sl_corr4'])
 
-wiggler.insert([
+wiggler_map.insert([
     env.place('corr1', at=0.02),
     env.place('corr2', at=0.1),
     env.place('corr3', at=l_wig - 0.1),
     env.place('corr4', at=l_wig - 0.02),
     ], s_tol=5e-3
 )
-wiggler.particle_ref = line.particle_ref
+wiggler_map.particle_ref = line.particle_ref
 
 # Computed for 1000 slices, 1000 steps
 env.vars.update(
@@ -179,7 +179,7 @@ env.vars.update(
 # opt.step(2)
 
 print('Twiss wiggler only')
-tw_wig_only = wiggler.twiss(include_collective=True, betx=1, bety=1)
+tw_wig_only = wiggler_map.twiss(include_collective=True, betx=1, bety=1)
 
 wiggler_places = [
     'ars02_uind_0500_1',
@@ -197,7 +197,7 @@ wiggler_places = [
 
 tt = line.get_table()
 for wig_place in wiggler_places:
-    line.insert(wiggler, anchor='start', at=tt['s', wig_place])
+    line.insert(wiggler_map, anchor='start', at=tt['s', wig_place])
 
 env['on_wig_corr'] = 0
 mywig.scale = 0
@@ -259,8 +259,8 @@ for ii, (bbx, bby) in enumerate(zip(Bx_mid, By_mid)):
                  at=s_mid[ii])
     wig_mult_places.append(pp)
 
-wiggler_mult = wiggler.copy(shallow=True)
-tt_slices = wiggler.get_table().rows['wigslic.*']
+wiggler_mult = wiggler_map.copy(shallow=True)
+tt_slices = wiggler_map.get_table().rows['wigslic.*']
 
 wiggler_mult.remove(tt_slices.name)
 wiggler_mult.insert(wig_mult_places)
