@@ -11,7 +11,8 @@ delta_chrom = 1e-4
 # deltas = [-2*delta_chrom, -delta_chrom, 0, delta_chrom, 2*delta_chrom]
 deltas = [-delta_chrom, delta_chrom]
 
-x0 = 0.5e-3
+# x0 = 0.5e-3
+x0 = 0
 
 dz = 0.001  # Step size in the z direction for numerical differentiation.
 
@@ -160,26 +161,26 @@ wiggler.insert([
 wiggler.particle_ref = line.particle_ref
 
 # Computed for 1000 slices, 1000 steps
-# env.vars.update(
-# {'k0l_corr1': np.float64(-0.0004540792291112204),
-#  'k0sl_corr1': np.float64(-1.213769189237666e-06),
-#  'k0l_corr2': np.float64(0.0008135172335552242),
-#  'k0sl_corr2': np.float64(0.00023470961164860475),
-#  'k0l_corr3': np.float64(-0.0001955197609031625),
-#  'k0sl_corr3': np.float64(-0.00021394733008765638),
-#  'k0l_corr4': np.float64(-0.00015806879956816854),
-#  'k0sl_corr4': np.float64(3.370506139561265e-05)})
+env.vars.update(
+{'k0l_corr1': np.float64(-0.0004540792291112204),
+ 'k0sl_corr1': np.float64(-1.213769189237666e-06),
+ 'k0l_corr2': np.float64(0.0008135172335552242),
+ 'k0sl_corr2': np.float64(0.00023470961164860475),
+ 'k0l_corr3': np.float64(-0.0001955197609031625),
+ 'k0sl_corr3': np.float64(-0.00021394733008765638),
+ 'k0l_corr4': np.float64(-0.00015806879956816854),
+ 'k0sl_corr4': np.float64(3.370506139561265e-05)})
 
 # For x0 = 0.5e-3
-env.vars.update(
-{'k0l_corr1': np.float64(-0.0004640274435485036),
- 'k0sl_corr1': np.float64(-1.2297340793905685e-06),
- 'k0l_corr2': np.float64(0.0008265782650066877),
- 'k0sl_corr2': np.float64(0.0002344711077490433),
- 'k0l_corr3': np.float64(-0.00018319740840498774),
- 'k0sl_corr3': np.float64(-0.00021346101458338208),
- 'k0l_corr4': np.float64(-0.00016749244113701785),
- 'k0sl_corr4': np.float64(3.3646895667713495e-05)})
+# env.vars.update(
+# {'k0l_corr1': np.float64(-0.0004640274435485036),
+#  'k0sl_corr1': np.float64(-1.2297340793905685e-06),
+#  'k0l_corr2': np.float64(0.0008265782650066877),
+#  'k0sl_corr2': np.float64(0.0002344711077490433),
+#  'k0l_corr3': np.float64(-0.00018319740840498774),
+#  'k0sl_corr3': np.float64(-0.00021346101458338208),
+#  'k0l_corr4': np.float64(-0.00016749244113701785),
+#  'k0sl_corr4': np.float64(3.3646895667713495e-05)})
 
 # # To compute the kicks
 # opt = wiggler.match(
@@ -302,7 +303,9 @@ tt_mult = wiggler_mult.get_table().rows['wig_mult_.*']
 for nn in tt_mult.name:
     env[nn].knl = 0
     env[nn].ksl = 0
+env['on_wig_corr'] = 0.0
 tw_wig_mult_off = line_wig_mult.twiss4d()
+
 
 plt.close('all')
 plt.figure(1, figsize=(6.4, 4.8))
@@ -320,5 +323,6 @@ ax.plot(tw.s, tw.betx2, '-', label='BPMETH, '+f'$|C^-|$={tw.c_minus:.2e}')
 ax.set_ylabel(r'$\beta_{x,2}$ [m]')
 ax.set_xlabel('s [m]')
 ax.legend()
+ax.set_ylim(0, 0.2)
 
 plt.show()
