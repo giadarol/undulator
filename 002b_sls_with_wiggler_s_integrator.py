@@ -8,7 +8,8 @@ import xtrack as xt
 
 
 delta_chrom = 1e-4
-deltas = [-2*delta_chrom, -delta_chrom, 0, delta_chrom, 2*delta_chrom]
+# deltas = [-2*delta_chrom, -delta_chrom, 0, delta_chrom, 2*delta_chrom]
+deltas = [-delta_chrom, delta_chrom]
 
 dz = 0.001  # Step size in the z direction for numerical differentiation.
 
@@ -249,12 +250,12 @@ tw._data.update(cols_chrom)
 tw._data.update(scalars_chrom)
 tw._col_names += list(cols_chrom.keys())
 
-qx_vs_delta = [tt.qx for tt in tw_vs_momentum.values()]
-qy_vs_delta = [tt.qy for tt in tw_vs_momentum.values()]
-qx_vs_delta_no_wig = [tt.qx for tt in tw_vs_momentum_no_wig.values()]
-qy_vs_delta_no_wig = [tt.qy for tt in tw_vs_momentum_no_wig.values()]
+# qx_vs_delta = [tt.qx for tt in tw_vs_momentum.values()]
+# qy_vs_delta = [tt.qy for tt in tw_vs_momentum.values()]
+# qx_vs_delta_no_wig = [tt.qx for tt in tw_vs_momentum_no_wig.values()]
+# qy_vs_delta_no_wig = [tt.qy for tt in tw_vs_momentum_no_wig.values()]
 
-plt.close('all')
-plt.figure(1)
-plt.plot(deltas, qx_vs_delta-tw.dqx*np.array(deltas)-tw.qx)
-plt.plot(deltas, qx_vs_delta_no_wig-tw_no_wig.dqx*np.array(deltas)-tw_no_wig.qx, '--')
+# plt.close('all')
+# plt.figure(1)
+# plt.plot(deltas, qx_vs_delta-tw.dqx*np.array(deltas)-tw.qx)
+# plt.plot(deltas, qx_vs_delta_no_wig-tw_no_wig.dqx*np.array(deltas)-tw_no_wig.qx, '--')
