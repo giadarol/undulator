@@ -119,6 +119,9 @@ line = env.ring
 line.configure_bend_model(core='mat-kick-mat')
 line.particle_ref = p0.copy()
 
+for ii in range(n_slices):
+    env.elements[f'wigslice_{ii}'] = wig_slices[ii]
+wiggler = env.new_line(components=['wigslice_' + str(ii) for ii in range(n_slices)])
 
 env['k0l_corr1'] = 0.
 env['k0l_corr2'] = 0.
@@ -129,10 +132,6 @@ env['k0sl_corr2'] = 0.
 env['k0sl_corr3'] = 0.
 env['k0sl_corr4'] = 0.
 env['on_wig_corr'] = 1.0
-
-for ii in range(n_slices):
-    env.elements[f'wiggler_{ii}'] = wig_slices[ii]
-wiggler = env.new_line(components=['wiggler_' + str(ii) for ii in range(n_slices)])
 
 env.new('corr1', xt.Multipole, knl=['on_wig_corr * k0l_corr1'], ksl=['on_wig_corr * k0sl_corr1'])
 env.new('corr2', xt.Multipole, knl=['on_wig_corr * k0l_corr2'], ksl=['on_wig_corr * k0sl_corr2'])
@@ -181,7 +180,6 @@ env.vars.update(
 print('Twiss wiggler only')
 tw_wig_only = wiggler.twiss(include_collective=True, betx=1, bety=1)
 
-
 wiggler_places = [
     'ars02_uind_0500_1',
     'ars03_uind_0380_1',
@@ -196,7 +194,6 @@ wiggler_places = [
     'ars12_uind_0500_1',
 ]
 
-# line.insert(wiggler, anchor='center', at=223.8)
 tt = line.get_table()
 for wig_place in wiggler_places:
     line.insert(wiggler, anchor='start', at=tt['s', wig_place])
@@ -249,6 +246,27 @@ cols_chrom, scalars_chrom = xt.twiss._compute_chromatic_functions(line, init=Non
 tw._data.update(cols_chrom)
 tw._data.update(scalars_chrom)
 tw._col_names += list(cols_chrom.keys())
+
+dl = np.diff(s_cuts)
+wig_mult_places = []
+for ii, (bbx, bby) in enumerate(zip(Bx_mid, By_mid)):
+    nn = f'wig_mult_{ii}'
+    pp = env.new(nn, xt.Multipole,
+                 knl=[dl[ii] * bby / p0.rigidity0[0]],
+                 ksl=[dl[ii] * bbx / p0.rigidity0[0]],
+                 at=s_mid[ii])
+    wig_mult_places.append(pp)
+
+wiggler_mult = wiggler.copy(shallow=True)
+tt_slices = wiggler.get_table().rows['wigslic.*']
+
+wiggler_mult.remove(tt_slices.name)
+wiggler_mult.insert(wig_mult_places)
+
+tw_wig_mult = wiggler_mult.twiss(betx=1, bety=1)
+
+
+
 
 # qx_vs_delta = [tt.qx for tt in tw_vs_momentum.values()]
 # qy_vs_delta = [tt.qy for tt in tw_vs_momentum.values()]
