@@ -116,6 +116,7 @@ Bx_mid, By_mid, Bs_mid = wig_slices[0].fieldmap_callable(0, 0, s_mid)
 
 env = xt.load('b075_2024.09.25.madx')
 line = env.ring
+env['ring_no_wiggler'] = line.copy(shallow=True)
 line.configure_bend_model(core='mat-kick-mat')
 line.particle_ref = p0.copy()
 
@@ -218,34 +219,34 @@ tw = line.twiss4d(include_collective=True, particle_on_co=p_co,
 
 
 
-tw_vs_momentum = {}
-for delta in deltas:
-    print(f'Twiss off momentum, delta = {delta}')
-    p_off = p_co.copy()
-    p_off.delta += delta
-    p_off.x += tw.dx[0] * delta
-    p_off.px += tw.dpx[0] * delta
-    p_off.y += tw.dy[0] * delta
-    p_off.py += tw.dpy[0] * delta
-    p_off.at_element=0
-    tw_vs_momentum[delta] = line.twiss4d(include_collective=True,
-                                         particle_on_co=p_off,
-                                         compute_chromatic_properties=False)
+# tw_vs_momentum = {}
+# for delta in deltas:
+#     print(f'Twiss off momentum, delta = {delta}')
+#     p_off = p_co.copy()
+#     p_off.delta += delta
+#     p_off.x += tw.dx[0] * delta
+#     p_off.px += tw.dpx[0] * delta
+#     p_off.y += tw.dy[0] * delta
+#     p_off.py += tw.dpy[0] * delta
+#     p_off.at_element=0
+#     tw_vs_momentum[delta] = line.twiss4d(include_collective=True,
+#                                          particle_on_co=p_off,
+#                                          compute_chromatic_properties=False)
 
 
-cols_chrom, scalars_chrom = xt.twiss._compute_chromatic_functions(line, init=None,
-                                      delta_chrom=delta_chrom,
-                                      steps_r_matrix=None,
-                                      matrix_responsiveness_tol=None,
-                                      matrix_stability_tol=None,
-                                      symplectify=None,
-                                      tw_chrom_res=[tw_vs_momentum[-delta_chrom],
-                                                    tw_vs_momentum[delta_chrom]],
-                                      on_momentum_twiss_res=tw)
+# cols_chrom, scalars_chrom = xt.twiss._compute_chromatic_functions(line, init=None,
+#                                       delta_chrom=delta_chrom,
+#                                       steps_r_matrix=None,
+#                                       matrix_responsiveness_tol=None,
+#                                       matrix_stability_tol=None,
+#                                       symplectify=None,
+#                                       tw_chrom_res=[tw_vs_momentum[-delta_chrom],
+#                                                     tw_vs_momentum[delta_chrom]],
+#                                       on_momentum_twiss_res=tw)
 
-tw._data.update(cols_chrom)
-tw._data.update(scalars_chrom)
-tw._col_names += list(cols_chrom.keys())
+# tw._data.update(cols_chrom)
+# tw._data.update(scalars_chrom)
+# tw._col_names += list(cols_chrom.keys())
 
 dl = np.diff(s_cuts)
 wig_mult_places = []
@@ -265,8 +266,11 @@ wiggler_mult.insert(wig_mult_places)
 
 tw_wig_mult = wiggler_mult.twiss(betx=1, bety=1)
 
+line_wig_mult = env['ring_no_wiggler'].copy(shallow=True)
+line.particle_ref = p0.copy()
 
-
+for wig_place in wiggler_places:
+    line_wig_mult.insert(wiggler_mult, anchor='start', at=tt['s', wig_place])
 
 # qx_vs_delta = [tt.qx for tt in tw_vs_momentum.values()]
 # qy_vs_delta = [tt.qy for tt in tw_vs_momentum.values()]
