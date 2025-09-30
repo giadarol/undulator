@@ -6,16 +6,9 @@ import numpy as np
 
 import xtrack as xt
 
-########################################################################################################################
-# TEST THE CLASS
-########################################################################################################################
 
-# Class has been successfully tested for the sinusoidal region in the middle.
-# The procedure is as follows: We fit the field on-axis (0,0).
-# We fit the transverse second derivative at (0,0).
-# This is a function of s, which is in turn fitted to a sinusoid.
-# We pass the resulting function parameters to bpmeth.
-# bpmeth correctly reproduces the data off-axis.
+delta_chrom = 1e-4
+deltas = [-2*delta_chrom, -delta_chrom, 0, delta_chrom, 2*delta_chrom]
 
 dz = 0.001  # Step size in the z direction for numerical differentiation.
 
@@ -187,11 +180,33 @@ env.vars.update(
 print('Twiss wiggler only')
 tw_wig_only = wiggler.twiss(include_collective=True, betx=1, bety=1)
 
-line.insert(wiggler, anchor='center', at=223.8)
+
+wiggler_places = [
+    'ars02_uind_0500_1',
+    'ars03_uind_0380_1',
+    'ars04_uind_0500_1',
+    'ars05_uind_0650_1',
+    'ars06_uind_0500_1',
+    'ars07_uind_0200_1',
+    'ars08_uind_0500_1',
+    'ars09_uind_0790_1',
+    'ars11_uind_0210_1',
+    'ars11_uind_0610_1',
+    'ars12_uind_0500_1',
+]
+
+# line.insert(wiggler, anchor='center', at=223.8)
+tt = line.get_table()
+for wig_place in wiggler_places:
+    line.insert(wiggler, anchor='start', at=tt['s', wig_place])
 
 env['on_wig_corr'] = 0
 mywig.scale = 0
 tw_no_wig = line.twiss4d(strengths=True)
+tw_vs_momentum_no_wig = {}
+for dd in deltas:
+    tw_vs_momentum_no_wig[dd] = line.twiss4d(delta0=dd,
+                                         compute_chromatic_properties=False)
 
 env['on_wig_corr'] = 1.0
 mywig.scale = 1.0
@@ -203,30 +218,22 @@ p_co.at_element=0
 tw = line.twiss4d(include_collective=True, particle_on_co=p_co,
                   compute_chromatic_properties=False)
 
-print('Twiss off momentum, positive delta')
-delta_chrom = 1e-4
-p_co_plus = p_co.copy()
-p_co_plus.delta += delta_chrom
-p_co_plus.x += tw.dx[0] * delta_chrom
-p_co_plus.px += tw.dpx[0] * delta_chrom
-p_co_plus.y += tw.dy[0] * delta_chrom
-p_co_plus.py += tw.dpy[0] * delta_chrom
-p_co_plus.at_element=0
-tw_plus = line.twiss4d(include_collective=True,
-                       particle_on_co=p_co_plus,
-                       compute_chromatic_properties=False)
 
-print('Twiss off momentum, negative delta')
-p_co_minus = p_co_plus.copy()
-p_co_minus.delta -= delta_chrom
-p_co_minus.x -= tw.dx[0] * delta_chrom
-p_co_minus.px -= tw.dpx[0] * delta_chrom
-p_co_minus.y -= tw.dy[0] * delta_chrom
-p_co_minus.py -= tw.dpy[0] * delta_chrom
-p_co_minus.at_element=0
-tw_minus = line.twiss4d(include_collective=True,
-                        particle_on_co=p_co_minus,
-                        compute_chromatic_properties=False)
+
+tw_vs_momentum = {}
+for delta in deltas:
+    print(f'Twiss off momentum, delta = {delta}')
+    p_off = p_co.copy()
+    p_off.delta += delta
+    p_off.x += tw.dx[0] * delta
+    p_off.px += tw.dpx[0] * delta
+    p_off.y += tw.dy[0] * delta
+    p_off.py += tw.dpy[0] * delta
+    p_off.at_element=0
+    tw_vs_momentum[delta] = line.twiss4d(include_collective=True,
+                                         particle_on_co=p_off,
+                                         compute_chromatic_properties=False)
+
 
 cols_chrom, scalars_chrom = xt.twiss._compute_chromatic_functions(line, init=None,
                                       delta_chrom=delta_chrom,
@@ -234,9 +241,20 @@ cols_chrom, scalars_chrom = xt.twiss._compute_chromatic_functions(line, init=Non
                                       matrix_responsiveness_tol=None,
                                       matrix_stability_tol=None,
                                       symplectify=None,
-                                      tw_chrom_res=[tw_minus, tw_plus],
+                                      tw_chrom_res=[tw_vs_momentum[-delta_chrom],
+                                                    tw_vs_momentum[delta_chrom]],
                                       on_momentum_twiss_res=tw)
 
 tw._data.update(cols_chrom)
 tw._data.update(scalars_chrom)
 tw._col_names += list(cols_chrom.keys())
+
+qx_vs_delta = [tt.qx for tt in tw_vs_momentum.values()]
+qy_vs_delta = [tt.qy for tt in tw_vs_momentum.values()]
+qx_vs_delta_no_wig = [tt.qx for tt in tw_vs_momentum_no_wig.values()]
+qy_vs_delta_no_wig = [tt.qy for tt in tw_vs_momentum_no_wig.values()]
+
+plt.close('all')
+plt.figure(1)
+plt.plot(deltas, qx_vs_delta-tw.dqx*np.array(deltas)-tw.qx)
+plt.plot(deltas, qx_vs_delta_no_wig-tw_no_wig.dqx*np.array(deltas)-tw_no_wig.qx, '--')
