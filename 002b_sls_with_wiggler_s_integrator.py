@@ -11,6 +11,8 @@ delta_chrom = 1e-4
 # deltas = [-2*delta_chrom, -delta_chrom, 0, delta_chrom, 2*delta_chrom]
 deltas = [-delta_chrom, delta_chrom]
 
+x0 = 0.5e-3
+
 dz = 0.001  # Step size in the z direction for numerical differentiation.
 
 # Create a Wiggler with parameters:
@@ -78,20 +80,22 @@ wiggler_map = bp.GeneralVectorPotential(hs=f"{curv}",a=(f"{a1}", f"{a2}", f"{a3}
 Bxfun, Byfun, Bsfun = wiggler_map.get_Bfield()
 
 class MyWiggler:
-    def __init__(self, Bx_fun, By_fun, Bs_fun, s0=0):
+    def __init__(self, Bx_fun, By_fun, Bs_fun, s0=0, x0=0, y0=0):
         self.Bx_fun = Bx_fun
         self.By_fun = By_fun
         self.Bs_fun = Bs_fun
         self.s0 = s0
+        self.x0 = x0
+        self.y0 = y0
         self.scale = 1.  # Scale to meters
 
     def get_field(self, x, y, s):
-        Bx = self.scale * self.Bx_fun(x, y, s + self.s0)
-        By = self.scale * self.By_fun(x, y, s + self.s0)
-        Bs = self.scale * self.Bs_fun(x, y, s + self.s0)
+        Bx = self.scale * self.Bx_fun(x - self.x0, y + self.y0, s + self.s0)
+        By = self.scale * self.By_fun(x - self.x0, y + self.y0, s + self.s0)
+        Bs = self.scale * self.Bs_fun(x - self.x0, y + self.y0, s + self.s0)
         return Bx, By, Bs
 
-mywig = MyWiggler(Bxfun, Byfun, Bsfun, s0=-1.1)
+mywig = MyWiggler(Bxfun, Byfun, Bsfun, s0=-1.1, x0=x0)
 
 p0 = xt.Particles(mass0=xt.ELECTRON_MASS_EV, q0=1,
                   energy0=2.4e9)
@@ -113,7 +117,9 @@ for ii in range(n_slices):
     wig_slices.append(wig)
 
 Bx_mid, By_mid, Bs_mid = wig_slices[0].fieldmap_callable(0, 0, s_mid)
-print('extracting a3 and b3')
+print('extracting a1, b1, a3, b3 at mid points')
+a1_mid  = [wiggler_map.a[0].subs({wiggler_map.s: ss}) for ss in s_mid + mywig.s0]
+b1_mid  = [wiggler_map.b[0].subs({wiggler_map.s: ss}) for ss in s_mid + mywig.s0]
 a3_mid  = [wiggler_map.a[2].subs({wiggler_map.s: ss}) for ss in s_mid + mywig.s0]
 b3_mid  = [wiggler_map.b[2].subs({wiggler_map.s: ss}) for ss in s_mid + mywig.s0]
 print('done')
@@ -154,15 +160,26 @@ wiggler.insert([
 wiggler.particle_ref = line.particle_ref
 
 # Computed for 1000 slices, 1000 steps
+# env.vars.update(
+# {'k0l_corr1': np.float64(-0.0004540792291112204),
+#  'k0sl_corr1': np.float64(-1.213769189237666e-06),
+#  'k0l_corr2': np.float64(0.0008135172335552242),
+#  'k0sl_corr2': np.float64(0.00023470961164860475),
+#  'k0l_corr3': np.float64(-0.0001955197609031625),
+#  'k0sl_corr3': np.float64(-0.00021394733008765638),
+#  'k0l_corr4': np.float64(-0.00015806879956816854),
+#  'k0sl_corr4': np.float64(3.370506139561265e-05)})
+
+# For x0 = 0.5e-3
 env.vars.update(
-{'k0l_corr1': np.float64(-0.0004540792291112204),
- 'k0sl_corr1': np.float64(-1.213769189237666e-06),
- 'k0l_corr2': np.float64(0.0008135172335552242),
- 'k0sl_corr2': np.float64(0.00023470961164860475),
- 'k0l_corr3': np.float64(-0.0001955197609031625),
- 'k0sl_corr3': np.float64(-0.00021394733008765638),
- 'k0l_corr4': np.float64(-0.00015806879956816854),
- 'k0sl_corr4': np.float64(3.370506139561265e-05)})
+{'k0l_corr1': np.float64(-0.0004640274435485036),
+ 'k0sl_corr1': np.float64(-1.2297340793905685e-06),
+ 'k0l_corr2': np.float64(0.0008265782650066877),
+ 'k0sl_corr2': np.float64(0.0002344711077490433),
+ 'k0l_corr3': np.float64(-0.00018319740840498774),
+ 'k0sl_corr3': np.float64(-0.00021346101458338208),
+ 'k0l_corr4': np.float64(-0.00016749244113701785),
+ 'k0sl_corr4': np.float64(3.3646895667713495e-05)})
 
 # # To compute the kicks
 # opt = wiggler.match(
@@ -177,8 +194,8 @@ env.vars.update(
 #                       ], step=1e-6),
 #     targets=[
 #         xt.TargetSet(x=0, px=0, y=0, py=0., at=xt.END),
-#         xt.TargetSet(x=0, y=0, at='wiggler_167'),
-#         xt.TargetSet(x=0, y=0, at='wiggler_833')
+#         xt.TargetSet(x=0., y=0, at='wigslice_167'),
+#         xt.TargetSet(x=0., y=0, at='wigslice_833')
 #         ],
 # )
 # opt.step(2)
@@ -259,8 +276,9 @@ for ii, (bbx, bby) in enumerate(zip(Bx_mid, By_mid)):
     nn = f'wig_mult_{ii}'
     pp = env.new(nn, xt.Bend,
                  length=dl[ii],
-                 knl=[dl[ii] * bby / p0.rigidity0[0], 0, dl[ii] * b3_mid[ii] / p0.rigidity0[0]],
-                 ksl=[dl[ii] * bbx / p0.rigidity0[0], 0, dl[ii] * a3_mid[ii] / p0.rigidity0[0]],
+                 knl=[dl[ii] * b1_mid[ii] / p0.rigidity0[0], 0, dl[ii] * b3_mid[ii] / p0.rigidity0[0]],
+                 ksl=[dl[ii] * a1_mid[ii] / p0.rigidity0[0], 0, dl[ii] * a3_mid[ii] / p0.rigidity0[0]],
+                 shift_x=x0,
                  at=s_mid[ii])
     wig_mult_places.append(pp)
 
@@ -279,3 +297,28 @@ for wig_place in wiggler_places:
     line_wig_mult.insert(wiggler_mult, anchor='start', at=tt['s', wig_place])
 
 tw_wig_mult = line_wig_mult.twiss4d()
+
+tt_mult = wiggler_mult.get_table().rows['wig_mult_.*']
+for nn in tt_mult.name:
+    env[nn].knl = 0
+    env[nn].ksl = 0
+tw_wig_mult_off = line_wig_mult.twiss4d()
+
+plt.close('all')
+plt.figure(1, figsize=(6.4, 4.8))
+ax = plt.subplot(111)
+ax.plot(tw_wig_mult.s, tw_wig_mult.betx/tw_wig_mult_off.betx - 1, label='multipoles')
+ax.plot(tw.s, tw.betx/tw_no_wig.betx - 1, '-', label='BPMETH')
+ax.set_ylabel(r'$\Delta \beta_x / \beta_x$')
+ax.set_xlabel('s [m]')
+ax.legend()
+
+plt.figure(2, figsize=(6.4, 4.8))
+ax = plt.subplot(111)
+ax.plot(tw_wig_mult.s, tw_wig_mult.betx2, label=r'Multipoles, $|C^-|$='+f'{tw_wig_mult.c_minus:.2e}')
+ax.plot(tw.s, tw.betx2, '-', label='BPMETH, '+f'$|C^-|$={tw.c_minus:.2e}')
+ax.set_ylabel(r'$\beta_{x,2}$ [m]')
+ax.set_xlabel('s [m]')
+ax.legend()
+
+plt.show()
